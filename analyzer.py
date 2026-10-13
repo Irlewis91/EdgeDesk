@@ -98,7 +98,7 @@ def _moneyline(g, side):
     if est:
         fair = est["fair_home"] if side == "home" else 1 - est["fair_home"]
         p = est["p_home"] if side == "home" else 1 - est["p_home"]
-        cap = 0.04 if fair >= 0.3 else 0.025
+        cap = PR.tilt_cap(fair)
         p = min(max(p, fair - cap), fair + cap)
         _, bump = PR.public_note(g, "ml_" + side)
         conf = 50 + (8 if "Pinnacle" in est["src"] else 0) + min(10, 2 * (len(est["ests"]) - 1)) - 60 * est["spread"] + bump
@@ -120,7 +120,8 @@ def _moneyline(g, side):
         return {"label": name, "quotes": quotes}
     p = PR.blend(fair, pm) if fair is not None else pm
     if fair is not None:
-        p = min(max(p, fair - 0.04), fair + 0.04)
+        cap = PR.tilt_cap(fair)
+        p = min(max(p, fair - cap), fair + cap)
     return {"label": name + (" (90 minutes)" if g.get("sport") == "soccer" and side != "draw" else ""), "p": p, "push": 0.0, "fair": fair,
             "conf": 44 if fair is not None and pm is not None else 34, "quotes": quotes,
             "basis": "Three-way market odds" + (" blended with the expected-goals model" if pm is not None else "") if fair is not None else "Expected-goals model only"}
@@ -186,7 +187,8 @@ def _spread_total(g, kind, side, line):
         p_np, basis, conf = model_np, "Team model only (no two-sided market found)", 32
     else:
         p_np = PR.blend(fair, model_np)
-        p_np = min(max(p_np, fair - 0.04), fair + 0.04)
+        cap = min(PR.tilt_cap(fair), 0.04 if fair <= 0.7 else 0.025)
+        p_np = min(max(p_np, fair - cap), fair + cap)
         basis = "No-vig market (%s)%s" % (src, " blended with the team model" if model_np is not None else "")
         conf = 48 + (8 if src and "Pinnacle" in src else 0) - (0 if exact else 8) - (0 if model_np is not None else 6)
         if kind == "spread":

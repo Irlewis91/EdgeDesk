@@ -173,6 +173,13 @@ def model_total_prob(g, line):
     return 1 - ncdf((line - mu) / sd), 0.0
 
 
+def tilt_cap(fair):
+    """How far the models may move a no-vig market probability. Scaled to the price so the edge the
+    models alone can create tops out near 8% of stake: a flat 4 points is 8% on a coin flip but 12%+
+    on a +200 underdog."""
+    return min(0.04, 0.08 * fair)
+
+
 def blend(fair, model, w=0.8):
     if model is None:
         return fair
@@ -281,7 +288,7 @@ def moneyline(g, pm_game, k_game):
             continue
         best = max(venues, key=lambda v: v["dec"])
         # models may tilt the market, but only a little (and less for longshots)
-        cap = 0.04 if fair_side >= 0.3 else 0.025
+        cap = tilt_cap(fair_side)
         p = min(max(p, fair_side - cap), fair_side + cap)
         ev = p * best["dec"] - 1
         if ev <= 0.01 or p < 0.25 or 1 / best["dec"] < 0.2:
@@ -360,7 +367,7 @@ def spreads_totals(g):
         quotes = drop_stale(quotes, fair * (1 - mp), 0.035)
         if not quotes:
             continue
-        cap = 0.04 if 0.3 <= fair <= 0.7 else 0.025      # the model may tilt the market less at long or short prices
+        cap = min(tilt_cap(fair), 0.04 if fair <= 0.7 else 0.025)      # the model may tilt the market less at long or short prices
         p_np = min(max(p_np, fair - cap), fair + cap)
         p_win = p_np * (1 - mp)
         book, odds = max(quotes, key=lambda q: dec(q[1]))
