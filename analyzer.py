@@ -201,7 +201,7 @@ def _spread_total(g, kind, side, line):
 
 def _line_label(g, kind, side, line):
     if kind == "spread":
-        return "%s %s%g" % (g[side]["display"], "+" if line > 0 else "", line)
+        return "%s %s%g" % (g[side]["display"], "+" if line > 0 else "", line) if line else "%s pick'em (spread 0)" % g[side]["display"]
     return "%s %g" % ("Over" if side == "over" else "Under", line)
 
 

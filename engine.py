@@ -17,6 +17,67 @@ def words(t):
     return [w for w in re.findall(r"[a-z0-9']+", (t or "").lower()) if w not in STOP and len(w) > 2]
 
 
+MONTH_WORDS = set("january february march april may june july august september october november december jan feb mar apr jun "
+                  "jul aug sep sept oct nov dec monday tuesday wednesday thursday friday saturday sunday q1 q2 q3 q4".split())
+NAME_ALIAS = {"u.s": "us", "usa": "us", "america": "us", "american": "us", "united": "us", "states": "us",
+              "federal": "fed", "reserve": "fed", "fomc": "fed", "gop": "republican", "republicans": "republican",
+              "democrats": "democrat", "democratic": "democrat", "btc": "bitcoin", "eth": "ethereum"}
+FILLER = set("will the a an of in on to by be is are was for at as and or vs v than does do did what who which how when "
+             "any this that with from end it its has have been yes".split())
+# words that change what is being asked even when everything else matches ("be 4.25%" vs "be above 4.25%")
+COMPARE = set("above below over under more less least most fewer greater higher lower between exactly not no "
+              "first second third each both either neither only".split())
+_MON = "jan feb mar apr may jun jul aug sep oct nov dec".split()
+_FULL_DATE = re.compile(r"\b(%s)\w*\.?\s+(\d{1,2})(?:st|nd|rd|th)?,?\s+((?:19|20)\d\d)\b" % "|".join(_MON), re.I)
+_BEFORE_YEAR = re.compile(r"\bbefore\s+((?:19|20)\d\d)\b", re.I)
+_DATE = re.compile(r"\b(?:%s)\w*\.?\s+\d{1,2}(?:st|nd|rd|th)?\b|\b(?:19|20)\d\d\b" % "|".join(_MON), re.I)
+_CLOCK = re.compile(r"\b\d{1,2}:\d{2}(?:\s*[ap]\.?m\b\.?)?(?:\s*(?:et|est|edt|ct|pt|utc|gmt)\b)?", re.I)
+
+
+def specifics(text):
+    """What makes a market question THIS question, as (words, numbers, years, deadlines).
+
+    words maps each content word to whether it is written as a proper noun (person, place, team, ticker);
+    numbers are the thresholds; years and deadlines are the dates it names ("before 2028" is the same
+    deadline as "by December 31, 2027")."""
+    t = _CLOCK.sub(" ", text or "")
+    deadlines = {(int(y), _MON.index(m.lower()) + 1, int(d)) for m, d, y in _FULL_DATE.findall(t)}
+    deadlines |= {(int(y) - 1, 12, 31) for y in _BEFORE_YEAR.findall(t)}
+    years = {int(y) for y in re.findall(r"\b(?:19|20)\d\d\b", _BEFORE_YEAR.sub(" ", t))} | {d[0] for d in deadlines}
+    t = _DATE.sub(" ", _BEFORE_YEAR.sub(" ", t))
+    found = {}
+    for w in re.findall(r"[^\W\d_][\w.'’&-]*", t):
+        core = w.strip(".'’-")
+        low = re.sub(r"['’]s$", "", core.lower())
+        low = NAME_ALIAS.get(low, low)
+        if len(low) < 2 or low in FILLER or low in MONTH_WORDS:
+            continue
+        found[low] = found.get(low, False) or core[:1].isupper()
+    nums = {x.rstrip(".").replace(",", "") for x in re.findall(r"\d[\d,]*(?:\.\d+)?", t)}
+    return found, {n.rstrip("0").rstrip(".") if "." in n else n for n in nums}, years, deadlines
+
+
+def same_question(a, b):
+    """True only when two venues are asking the same thing: the same people/places/teams, the same
+    numbers and the same dates. Sharing a template ("Will <state> enact a data center moratorium…")
+    is not enough, and neither is sharing the subject when the ask differs (win vs run vs qualify)."""
+    wa, na, ya, da = specifics(a)
+    wb, nb, yb, db = specifics(b)
+    if na != nb or (ya and yb and ya != yb) or (da and db and da != db):
+        return False
+    loose = []
+    for mine, theirs in ((wa, wb), (wb, wa)):
+        # a plain word may differ in form across venues (nomination / nominee); a name may not
+        left = [w for w in mine if w not in theirs and not (
+            not mine[w] and len(w) >= 5 and any(o[:5] == w[:5] and not theirs[o] for o in theirs))]
+        if any(mine[w] or w in COMPARE for w in left):
+            return False
+        loose.append(left)
+    # leftover wording is tolerated only as a couple of extra words on one side; different words on
+    # both sides (win / run) is a different question
+    return not (loose[0] and loose[1]) and len(loose[0]) + len(loose[1]) <= 2
+
+
 def dec(ml):
     return 1 + (ml / 100 if ml > 0 else 100 / -ml)
 
@@ -264,9 +325,10 @@ def prediction_candidates(pm, km, headlines):
             if not kw:
                 continue
             j = len(pw & kw) / len(pw | kw)
-            if j > sim:
+            # similar wording is only a lead; e.g. Louisiana vs Alabama share the whole template but are different bets
+            if j > sim and j >= 0.5 and same_question(p["question"], market_text(k)):
                 best, sim = k, j
-        if not best or sim < 0.5:
+        if not best:
             continue
         pe, ke = S.parse_dt(p["end"]), S.parse_dt(best["end"])
         if pe and ke and abs((pe - ke).days) > 7:

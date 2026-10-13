@@ -301,6 +301,14 @@ def price_props(games, espn_games):
     items = list(offers.items())
     with ThreadPoolExecutor(8) as ex:
         list(ex.map(lambda it: history(it[0][0], it[0][1], it[0][2]), items))
+    # two-sided markets per player and stat: the anchor for pricing one-sided ladder lines ("100+ yards")
+    anchors = defaultdict(list)
+    for (lg, player, key, line, *_r), prs in items:
+        two = (next((p for p in prs if p["book"] == "Pinnacle" and p.get("over") and p.get("under")), None)
+               or next((p for p in prs if p.get("over") and p.get("under") and not p.get("dfs")), None))
+        if two:
+            io_, iu = implied(two["over"]), implied(two["under"])
+            anchors[(lg, player, key)].append((line, io_ / (io_ + iu)))
     out = []
     for (lg, player, key, line, home, away, start), prs in items:
         vals = history(lg, player, key)
@@ -337,12 +345,28 @@ def price_props(games, espn_games):
         if not m:
             continue
         # market: no-vig from Pinnacle if present, else Bovada; best price across books
+        one_sided = False
         pin = next((p for p in prs if p["book"] == "Pinnacle" and p.get("under")), None)
         ref = pin or next((p for p in prs if p.get("under") and not p.get("dfs")), None) or next((p for p in prs if p.get("under")), None)
         if ref:
             io_, iu = implied(ref["over"]), implied(ref["under"])
             fair_over = io_ / (io_ + iu)
-        else:                                          # one-sided (anytime TD/goal): strip ~20% hold
+        elif anchors.get((lg, player, key)):
+            # one-sided ladder line: take the market's view from the player's two-sided line and carry it
+            # to this number along the player's own distribution (scale the mean until it reproduces that price)
+            a_line, a_fair = min(anchors[(lg, player, key)], key=lambda a: abs(a[0] - line))
+            pois = key in POISSON or m["mean"] < 8
+            over = lambda sc, ln: poisson_over(m["mean"] * sc, ln) if pois else normal_over(m["mean"] * sc, m["sd"] * sc, ln)
+            lo, hi = 0.2, 5.0
+            for _ in range(40):
+                mid = (lo + hi) / 2
+                lo, hi = (mid, hi) if over(mid, a_line) < a_fair else (lo, mid)
+            # ...but never above what the book itself is charging: its price already includes its margin,
+            # so the true chance of a one-sided line sits below the implied price, not above it
+            fair_over = min(over(lo, line), implied(max(p_["over"] for p_ in prs if p_.get("over"))) / 1.05)
+            fair_over = min(0.99, max(0.01, fair_over))
+            one_sided = True
+        else:                                          # one-sided with no two-sided line anywhere (anytime TD/goal): strip the hold
             fair_over = implied(max(p_["over"] for p_ in prs if p_.get("over"))) / (1.20 if key.startswith("anytime") else 1.10)
         for side in ("over", "under"):
             pm = m["p_over"] if side == "over" else 1 - m["p_over"]
@@ -353,8 +377,9 @@ def price_props(games, espn_games):
             # a huge disagreement usually means a role change the market already knows about
             w = 1.2 * min(1.0, m["n"] / 10) * (0.3 if gap > 0.25 else 1.0)
             p = (2 * pf + w * pm) / (2 + w)
-            p = min(max(p, pf - 0.06), pf + 0.06)         # the model can tilt the market, not overrule it
-            conf = 45 + (10 if pin else 0) + min(10, 2 * m["n_cur"]) - 80 * max(0, gap - 0.12)
+            cap = min(0.06, 0.12 * pf)                    # the model can tilt the market, not overrule it; less so on longshots
+            p = min(max(p, pf - cap), pf + cap)
+            conf = 45 + (10 if pin else 0) + min(10, 2 * m["n_cur"]) - 80 * max(0, gap - 0.12) - (8 if one_sided else 0)
             quotes = [(p_["book"], p_[side]) for p_ in prs if p_.get(side)]
             if not quotes:
                 continue

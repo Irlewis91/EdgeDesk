@@ -87,27 +87,45 @@ def fair_ml(g):
 
 
 def fair_line(g, kind, line):
-    """No-vig P(home covers `line`) or P(over `line`) from the sharpest pair at that exact number."""
+    """No-vig P(home covers `line`) or P(over `line`) at that exact number.
+
+    Order of trust: Pinnacle's main line, Pinnacle's alternate pair, then the other books' main lines,
+    but only when at least two of them post this number (or it is the only number anyone posts). A single
+    book sitting on an old number is a stale line, not a fair price; trusting it made every better
+    alternate price at that number look like a huge edge."""
     L = g["lines"]
-    order = ["Pinnacle"] + [b for b in L if b not in ("Pinnacle", "Opener")]
-    for b in order:
-        x = L.get(b, {})
+
+    def main_pair(x):
         if kind == "spread" and x.get("spread_home") == line and x.get("spread_home_odds") and x.get("spread_away_odds"):
-            return novig(x["spread_home_odds"], x["spread_away_odds"]), b
+            return novig(x["spread_home_odds"], x["spread_away_odds"])
         if kind == "total" and x.get("total") == line and x.get("over_odds") and x.get("under_odds"):
-            return novig(x["over_odds"], x["under_odds"]), b
-    # alternate pairs (Pinnacle first, then Bovada)
-    for book in ("Pinnacle", "Bovada"):
+            return novig(x["over_odds"], x["under_odds"])
+        return None
+
+    def alt_pair(book):
         if kind == "spread":
-            h = next((a for a in g["alts"] if a["book"] == book and a["kind"] == "spread" and a["side"] == "home" and a["line"] == line), None)
-            a_ = next((a for a in g["alts"] if a["book"] == book and a["kind"] == "spread" and a["side"] == "away" and a["line"] == -line), None)
-            if h and a_:
-                return novig(h["odds"], a_["odds"]), book + " alt"
+            a_ = next((a for a in g["alts"] if a["book"] == book and a["kind"] == "spread" and a["side"] == "home" and a["line"] == line and a.get("odds")), None)
+            b_ = next((a for a in g["alts"] if a["book"] == book and a["kind"] == "spread" and a["side"] == "away" and a["line"] == -line and a.get("odds")), None)
         else:
-            o = next((a for a in g["alts"] if a["book"] == book and a["kind"] == "total" and a["side"] == "over" and a["line"] == line), None)
-            u = next((a for a in g["alts"] if a["book"] == book and a["kind"] == "total" and a["side"] == "under" and a["line"] == line), None)
-            if o and u:
-                return novig(o["odds"], u["odds"]), book + " alt"
+            a_ = next((a for a in g["alts"] if a["book"] == book and a["kind"] == "total" and a["side"] == "over" and a["line"] == line and a.get("odds")), None)
+            b_ = next((a for a in g["alts"] if a["book"] == book and a["kind"] == "total" and a["side"] == "under" and a["line"] == line and a.get("odds")), None)
+        return novig(a_["odds"], b_["odds"]) if a_ and b_ else None
+
+    p = main_pair(L.get("Pinnacle", {}))
+    if p is not None:
+        return p, "Pinnacle"
+    p = alt_pair("Pinnacle")
+    if p is not None:
+        return p, "Pinnacle alt"
+    key = "spread_home" if kind == "spread" else "total"
+    others = {b: x for b, x in L.items() if b not in ("Pinnacle", "Opener") and x.get(key) is not None}
+    at = [(b, main_pair(x)) for b, x in others.items()]
+    at = [(b, v) for b, v in at if v is not None]
+    if at and (len(at) >= 2 or len({x[key] for x in others.values()}) == 1):
+        return statistics.median(v for _, v in at), (at[0][0] if len(at) == 1 else "median of %d books" % len(at))
+    p = alt_pair("Bovada")
+    if p is not None:
+        return p, "Bovada alt"
     return None, None
 
 
@@ -163,14 +181,30 @@ def blend(fair, model, w=0.8):
     return (3 * fair + w * model) / (3 + w)
 
 
+def sane_prices(prices, fair, tol=0.04, gap=0.025):
+    """Drop prices that are too good to be real. prices: [(venue, implied probability)].
+
+    Two tests, and no venue is exempt (Pinnacle used to be, so a Pinnacle price measured against some
+    other book's stale number always survived and became the "best price"):
+      1. nothing more than `tol` better than the no-vig fair price;
+      2. the best price may not beat fair while standing more than `gap` clear of every other venue.
+         One book alone on a number is a stale or mismatched line, not an edge."""
+    kept = sorted(((v, p) for v, p in prices if p >= fair - tol), key=lambda x: x[1])
+    while len(kept) >= 2 and kept[0][1] < fair and kept[1][1] - kept[0][1] > gap:
+        kept.pop(0)
+    ok = {v for v, _ in kept}
+    return [(v, p) for v, p in prices if v in ok]
+
+
 def drop_stale(quotes, fair=None, tol=0.04):
     """Remove prices far better than the rest of the market — usually stale lines that get cancelled or moved.
     quotes: [(book, american_odds)]"""
-    imps = sorted(implied(o) for _, o in quotes if o)
-    if not imps:
+    quotes = [(b, o) for b, o in quotes if o]
+    if not quotes:
         return quotes
-    ref = fair if fair is not None else statistics.median(imps)
-    return [(b, o) for b, o in quotes if o and (b.startswith("Pinnacle") or implied(o) >= ref - tol)]
+    ref = fair if fair is not None else statistics.median(implied(o) for _, o in quotes)
+    ok = {b for b, _ in sane_prices([(b, implied(o)) for b, o in quotes], ref, tol)}
+    return [(b, o) for b, o in quotes if b in ok]
 
 
 def ev_of(p_win, p_push, odds):
@@ -235,15 +269,14 @@ def moneyline(g, pm_game, k_game):
         p = p_home if side == "home" else 1 - p_home
         quotes = [(b, x.get("ml_" + side)) for b, x in g["lines"].items() if x.get("ml_" + side) and bettable(b)]
         fair_side = fair_home if side == "home" else 1 - fair_home
-        stale = [b for b, _ in quotes]
-        quotes = drop_stale(quotes, fair_side, 0.035)
-        stale = [b for b in stale if b not in {q[0] for q in quotes}]
         venues = [{"venue": b, "price": E.fmt_ml(o), "dec": dec(o), "url": g["url"]} for b, o in quotes]
-        if pm_game and 0.03 < pm_game[side] < 0.97 and pm_game[side] >= fair_side - 0.035:
+        if pm_game and 0.03 < pm_game[side] < 0.97:
             venues.append({"venue": "Polymarket", "price": "%.0f¢" % (pm_game[side] * 100), "dec": 1 / pm_game[side], "url": pm_game["m"]["url"]})
-        if k_game and 0.03 < k_game[side]["yes_ask"] < 0.97 and k_game[side]["yes_ask"] >= fair_side - 0.035:
+        if k_game and 0.03 < k_game[side]["yes_ask"] < 0.97:
             c = k_game[side]["yes_ask"]
             venues.append({"venue": "Kalshi", "price": "%.0f¢" % (c * 100), "dec": 1 / (c + E.kalshi_fee(c)), "url": k_game[side]["url"]})
+        ok = {v for v, _ in sane_prices([(v["venue"], 1 / v["dec"]) for v in venues], fair_side, 0.035)}
+        venues = [v for v in venues if v["venue"] in ok]
         if not venues:
             continue
         best = max(venues, key=lambda v: v["dec"])
@@ -292,6 +325,12 @@ def spreads_totals(g):
         quotes = [(b, o) for b, o in quotes if o and bettable(b)]
         if line is None or not quotes:
             continue
+        worst = {}                                   # a book quoting one selection twice has two different markets
+        for b, o in quotes:                          # mixed together; keep its lower price so neither can mislead
+            k = b.replace(" alt", "")
+            if k not in worst or dec(o) < dec(worst[k][1]):
+                worst[k] = (b, o)
+        quotes = list(worst.values())
         if kind == "spread":
             home_line = line if side == "home" else -line
             fair_home, src = fair_line(g, "spread", home_line)
@@ -321,7 +360,8 @@ def spreads_totals(g):
         quotes = drop_stale(quotes, fair * (1 - mp), 0.035)
         if not quotes:
             continue
-        p_np = min(max(p_np, fair - 0.04), fair + 0.04)
+        cap = 0.04 if 0.3 <= fair <= 0.7 else 0.025      # the model may tilt the market less at long or short prices
+        p_np = min(max(p_np, fair - cap), fair + cap)
         p_win = p_np * (1 - mp)
         book, odds = max(quotes, key=lambda q: dec(q[1]))
         ev = ev_of(p_win, mp, odds)
@@ -330,13 +370,13 @@ def spreads_totals(g):
             continue
         team = g[side] if kind == "spread" else None
         if kind == "spread":
-            pick = "%s %s%g" % (team["display"], "+" if line > 0 else "", line)
+            pick = "%s %s%g" % (team["display"], "+" if line > 0 else "", line) if line else "%s pick'em (spread 0)" % team["display"]
             side_name, opp_name = team["display"], g["away" if side == "home" else "home"]["display"]
         else:
             pick = "%s %g total points" % ("Over" if side == "over" else "Under", line)
             side_name, opp_name = pick, ""
         note, bump = public_note(g, "spread_" + side) if kind == "spread" else (None, 0)
-        conf = 48 + (8 if src and "Pinnacle" in src else 0) + bump - 150 * max(0, abs(p_np - fair) - 0.04) - (4 if is_alt else 0)
+        conf = 48 + (8 if src and "Pinnacle" in src else 0) + bump - (4 if is_alt else 0)
         c = _base(g, ("alt_" if is_alt else "") + kind, pick, side_name, opp_name)
         c.update({"id": "%s-%s-%s-%s" % (kind, g["id"], side, line), "venue": book.replace(" alt", ""), "price": E.fmt_ml(odds),
                   "url": g["url"], "dec": dec(odds), "line": line, "side": side,
