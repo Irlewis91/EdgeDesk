@@ -1,0 +1,14 @@
+# secrets and local settings: never publish
+.env
+.env.*
+.claude/
+# generated data, logs and caches
+data/
+logs/
+__pycache__/
+*.pyc
+.DS_Store
+# old working copy and large media
+edgedesk/
+*.mp4
+!.env.example

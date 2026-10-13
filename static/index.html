@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EdgeDesk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#F3F4FB; --sheet:#FFFFFF; --sheet2:#ECEEFA; --ink:#15173B; --ink2:#5A5F8C; --rule:#DCDFF0;
+  --mark:#C8F442; --mark-ink:#15173B; --win:#0B8F5F; --loss:#D63A52; --link:#5B3DF5; --chip:#E6E8F7;
+  --brand:#5B3DF5; --brand2:#9B5CF6; --on-brand:#FFFFFF; --warn:#B7791F;
+  --cond:"Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
+  --text:"Public Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --rail:212px;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --paper:#0B0D1E; --sheet:#14172E; --sheet2:#1B1F3B; --ink:#ECEEFF; --ink2:#9BA1CC; --rule:#272C50;
+  --mark:#C6F432; --mark-ink:#0B0D1E; --win:#3DDC97; --loss:#FF6B81; --link:#A99BFF; --chip:#232848;
+  --brand:#8E7BFF; --brand2:#C084FC; --on-brand:#0B0D1E; --warn:#F2C14E;}}
+:root[data-theme="dark"]{--paper:#0B0D1E; --sheet:#14172E; --sheet2:#1B1F3B; --ink:#ECEEFF; --ink2:#9BA1CC; --rule:#272C50;
+  --mark:#C6F432; --mark-ink:#0B0D1E; --win:#3DDC97; --loss:#FF6B81; --link:#A99BFF; --chip:#232848;
+  --brand:#8E7BFF; --brand2:#C084FC; --on-brand:#0B0D1E; --warn:#F2C14E;}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.55 var(--text)}
+a{color:var(--link);text-decoration:none}a:hover{text-decoration:underline}
+:focus-visible{outline:2px solid var(--link);outline-offset:2px;border-radius:3px}
+button{font:inherit;color:inherit}
+.num{font-variant-numeric:tabular-nums}
+.good{color:var(--win)}.bad{color:var(--loss)}.muted{color:var(--ink2)}
+h1,h2,h3{font-family:var(--cond);font-weight:700;letter-spacing:.005em;line-height:1.1;margin:0}
+h1{font-size:40px}h2{font-size:26px}h3{font-size:19px;font-weight:600}
+
+.shell{display:grid;grid-template-columns:var(--rail) 1fr;min-height:100vh}
+.rail{position:sticky;top:0;height:100vh;padding:22px 14px;border-right:1px solid var(--rule);display:flex;flex-direction:column;gap:18px;background:linear-gradient(180deg,color-mix(in srgb,var(--brand) 9%,var(--paper)),var(--paper) 46%)}
+.logo{font:700 26px/1 var(--cond);letter-spacing:.01em;padding:0 8px}
+.logo{color:var(--brand)}.logo b{color:var(--mark-ink);background:var(--mark);border-radius:5px;padding:0 5px;margin-left:2px}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav button{all:unset;cursor:pointer;display:flex;justify-content:space-between;align-items:center;padding:7px 10px;border-radius:7px;color:var(--ink2);font-weight:500}
+.nav button:hover{background:var(--sheet2);color:var(--ink)}
+.nav button:focus-visible{outline:2px solid var(--link)}
+.nav button[aria-current="page"]{background:var(--sheet);color:var(--brand);font-weight:600;box-shadow:inset 3px 0 0 var(--brand),0 1px 3px color-mix(in srgb,var(--brand) 14%,transparent)}
+.nav .count{font:600 14px var(--cond);color:var(--ink2)}
+.rail-foot{margin-top:auto;font-size:12.5px;color:var(--ink2);display:flex;flex-direction:column;gap:8px;padding:0 8px}
+.btn{cursor:pointer;border:1px solid var(--rule);background:var(--sheet);border-radius:8px;padding:7px 12px;font-weight:600}
+.btn:hover{border-color:var(--brand);color:var(--brand)}
+.btn.primary{background:linear-gradient(135deg,var(--brand),var(--brand2));color:var(--on-brand);border-color:transparent}.btn.primary:hover{color:var(--on-brand);filter:brightness(1.08)}
+.btn[disabled]{opacity:.7;cursor:progress}
+main{padding:36px 44px 96px;max-width:1240px;min-width:0}
+main:focus{outline:none}
+.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap;margin-bottom:24px}
+.lede{color:var(--ink2);max-width:72ch;margin:6px 0 0}
+.filters{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 14px}
+.filters button{cursor:pointer;border:1px solid var(--rule);background:transparent;border-radius:99px;padding:3px 11px;font-size:13px;color:var(--ink2)}
+.filters button[aria-pressed="true"]{background:var(--brand);color:var(--on-brand);border-color:var(--brand)}
+.chip{display:inline-block;background:var(--chip);color:var(--ink2);border-radius:5px;padding:0 6px;font-size:12px;line-height:20px;white-space:nowrap;margin-right:4px}
+.note{font-size:12.5px;color:var(--ink2)}
+
+/* the signature: a highlighter stroke, used only for best bets and best prices */
+.hl{background-image:linear-gradient(100deg,transparent 0 1%,var(--mark) 2% 97%,transparent 99%);background-size:100% 92%;background-position:0 55%;background-repeat:no-repeat;color:var(--mark-ink);padding:0 3px;box-decoration-break:clone;-webkit-box-decoration-break:clone}
+.hl-cell{background:var(--mark);color:var(--mark-ink) !important;font-weight:700}
+.hl-cell a{color:var(--mark-ink)}
+@media (prefers-reduced-motion:no-preference){
+  .draw .hl{animation:draw .8s cubic-bezier(.2,.7,.2,1) both}
+  .draw .slip-row:nth-child(3) .hl{animation-delay:.14s}.draw .slip-row:nth-child(4) .hl{animation-delay:.28s}
+  @keyframes draw{from{background-size:0% 92%;color:var(--ink)}60%{color:var(--ink)}to{background-size:100% 92%;color:var(--mark-ink)}}
+}
+
+.today{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:28px;align-items:start}
+.side{position:sticky;top:18px;display:flex;flex-direction:column;gap:16px}
+.panel{background:var(--sheet);border:1px solid var(--rule);border-radius:12px;padding:16px 18px;box-shadow:0 1px 2px color-mix(in srgb,var(--ink) 5%,transparent)}
+.brief{border-left:3px solid var(--brand);padding:2px 0 2px 14px;margin:0 0 18px;max-width:75ch}
+
+.slip{background:var(--sheet);border:1px solid var(--rule);border-radius:14px;overflow:hidden;box-shadow:0 2px 10px color-mix(in srgb,var(--brand) 7%,transparent)}
+.slip-main{min-height:74px}
+.slip-head,.slip-main{display:grid;grid-template-columns:40px minmax(0,1fr) 96px 72px 92px 60px;gap:12px}
+.slip-head{padding:9px 20px;font-size:12px;color:var(--ink2);border-bottom:1px solid var(--rule)}
+.slip-row{border-bottom:1px solid var(--rule)}
+.slip-row:last-child{border-bottom:0}
+.slip-main{all:unset;box-sizing:border-box;cursor:pointer;width:100%;display:grid;grid-template-columns:40px minmax(0,1fr) 96px 72px 92px 60px;gap:14px;padding:16px 20px;align-items:center}
+.slip-main:hover{background:var(--sheet2)}
+.slip-main:focus-visible{outline:2px solid var(--link);outline-offset:-2px}
+.rank{font:700 28px/1 var(--cond);color:var(--ink2)}
+.slip-row.best .rank{color:var(--brand)}
+.pick{font:700 21px/1.15 var(--cond);letter-spacing:.005em}
+.sub{font-size:12.5px;color:var(--ink2);margin-top:5px;display:flex;gap:4px 8px;flex-wrap:wrap;align-items:center;white-space:pre-wrap}
+.price{font:700 21px/1 var(--cond)}
+.price small{display:block;font:500 12px var(--text);color:var(--ink2);margin-top:4px}
+.ev{font:700 20px/1 var(--cond)}
+.meter{height:6px;background:var(--chip);border-radius:9px;overflow:hidden;margin-top:6px}
+.meter i{display:block;height:100%;background:linear-gradient(90deg,var(--brand),var(--brand2));border-radius:9px}
+.stake{font:600 18px var(--cond)}
+.tier{font:600 12.5px var(--text);padding:0 7px;border-radius:5px;line-height:20px}
+.tier.best{background:var(--mark);color:var(--mark-ink)}
+.tier.solid{background:var(--chip);color:var(--win)}
+.tier.lean{background:var(--chip);color:var(--ink2)}
+.slip-detail{display:none;padding:2px 18px 20px 70px}
+.slip-row[data-open="true"] .slip-detail{display:block}
+.slip-row[data-open="true"] .slip-main{background:var(--sheet2)}
+.thebet{border:2px solid var(--brand);border-radius:10px;padding:12px 14px;margin:6px 0 14px;max-width:78ch}
+.slip-row.best .thebet{border-color:var(--mark);background:color-mix(in srgb,var(--mark) 14%,var(--sheet))}
+.thebet b{font-family:var(--cond);font-size:18px;margin-right:4px}
+.why{max-width:78ch;margin:0 0 14px}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:22px 28px}
+.cols h4{margin:0 0 6px;font:600 17px var(--cond)}
+.kv{width:100%;border-collapse:collapse;font-size:13.5px}
+.kv td{padding:4px 0;border-bottom:1px solid var(--rule);vertical-align:top}
+.kv td:first-child{color:var(--ink2);padding-right:10px}
+.kv td.num{text-align:right;white-space:nowrap;padding:4px 6px}
+.list{list-style:none;margin:0;padding:0}.list li{padding:6px 0;border-bottom:1px solid var(--rule);font-size:13.5px}.list li:last-child{border:0}
+.post{background:var(--sheet2);border-radius:8px;padding:8px 10px;margin:6px 0;font-size:13px}
+
+.tablewrap{overflow-x:auto;background:var(--sheet);border:1px solid var(--rule);border-radius:12px}
+table.grid{border-collapse:collapse;width:100%;font-size:13.5px}
+.grid th{background:transparent;text-align:left;font-weight:600;color:var(--ink2);font-size:12.5px;padding:8px 10px;border-bottom:1px solid var(--rule);white-space:nowrap}
+.grid td{padding:7px 10px;border-bottom:1px solid var(--rule);vertical-align:top}
+.grid tr:last-child td{border-bottom:0}
+.grid .c{text-align:center;white-space:nowrap}
+.gamehead td{background:var(--sheet2);font-weight:600;padding-top:12px;padding-bottom:8px}
+.lanes{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));border-top:1px solid var(--rule);margin-top:12px}
+.lane{padding:12px 14px 4px 0;border-right:1px solid var(--rule);min-width:0}
+.lane+.lane{padding-left:14px}
+.lane:last-child{border-right:0}
+.lane h4{margin:0 0 6px;font:600 17px var(--cond)}
+.thread{margin-bottom:18px}
+.thread-top{display:flex;justify-content:space-between;gap:12px;align-items:baseline;flex-wrap:wrap}
+.heat{display:flex;gap:3px}.heat i{width:10px;height:10px;border-radius:2px;background:var(--chip)}.heat i.on{background:var(--brand)}
+.flag{color:var(--loss);font-size:13px}
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+.tile{background:var(--sheet);border:1px solid var(--rule);border-radius:10px;padding:10px 12px}
+.tile .v{font:700 23px var(--cond)}
+.seg{display:inline-flex;border:1px solid var(--rule);border-radius:8px;overflow:hidden;margin-bottom:12px;flex-wrap:wrap}
+.seg button{cursor:pointer;border:0;background:transparent;padding:5px 12px;font-size:13px;color:var(--ink2)}
+.seg button[aria-pressed="true"]{background:var(--brand);color:var(--on-brand)}
+.empty{padding:40px;text-align:center;color:var(--ink2)}
+.spin{display:inline-block;width:11px;height:11px;border:2px solid var(--ink2);border-top-color:transparent;border-radius:50%;animation:s 1s linear infinite;vertical-align:-1px}
+@keyframes s{to{transform:rotate(360deg)}}
+.az{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:24px;align-items:start}
+.field{display:flex;flex-direction:column;gap:3px;min-width:0}
+.field>span{font-size:12px;color:var(--ink2);font-weight:500}
+.field select,.field input{font:inherit;color:var(--ink);background:var(--sheet);border:1px solid var(--rule);border-radius:8px;padding:7px 9px;width:100%;min-width:0}
+.field select:focus,.field input:focus{outline:2px solid var(--brand);outline-offset:0;border-color:transparent}
+.leg{border:1px solid var(--rule);border-radius:12px;padding:12px 14px;margin-bottom:10px;background:var(--sheet2)}
+.leg-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.leg-top b{font:700 17px var(--cond)}
+.leg-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px 10px}
+.leg-grid .w1{grid-column:span 1}.leg-grid .w2{grid-column:span 2}.leg-grid .w3{grid-column:span 3}.leg-grid .w4{grid-column:span 4}.leg-grid .w6{grid-column:span 6}
+.x{all:unset;cursor:pointer;color:var(--ink2);padding:0 6px;border-radius:6px;font-size:18px;line-height:22px}.x:hover{color:var(--loss);background:var(--chip)}
+.x:focus-visible{outline:2px solid var(--link)}
+.az-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-top:12px}
+.dial{display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.dial svg{flex:none}
+.dial .big{font:700 46px/1 var(--cond)}
+.grade{display:inline-block;font:700 15px var(--cond);letter-spacing:.04em;text-transform:uppercase;border-radius:6px;padding:1px 9px;margin-top:6px}
+.g-Strong,.g-Good{background:color-mix(in srgb,var(--win) 16%,var(--sheet));color:var(--win)}
+.g-Fair{background:var(--chip);color:var(--ink2)}
+.g-Weak,.g-Poor{background:color-mix(in srgb,var(--loss) 14%,var(--sheet));color:var(--loss)}
+.az-tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;margin:14px 0}
+.az-tiles .tile{padding:8px 10px}.az-tiles .v{font-size:21px}
+.err{color:var(--loss);font-weight:600}
+@media (max-width:1180px){.az{grid-template-columns:1fr}}
+@media (max-width:560px){.leg-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.leg-grid .w3,.leg-grid .w4,.leg-grid .w6{grid-column:span 2}}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+
+@media (max-width:1180px){.today{grid-template-columns:1fr}.side{position:static}}
+@media (max-width:860px){
+  .shell{grid-template-columns:1fr}
+  .rail{position:sticky;top:0;z-index:5;height:auto;flex-direction:row;align-items:center;padding:10px 12px;border-right:0;border-bottom:1px solid var(--rule);gap:10px}
+  .nav{flex-direction:row;overflow-x:auto;scrollbar-width:none;flex:1}
+  .nav button{white-space:nowrap;padding:6px 10px}.nav .count{display:none}
+  .nav button[aria-current="page"]{box-shadow:inset 0 -2px 0 var(--brand)}
+  .rail-foot{display:none}
+  main{padding:18px 16px 60px}
+  h1{font-size:32px}
+  .slip-head{display:none}
+  .slip-main{grid-template-columns:30px minmax(0,1fr) auto;row-gap:6px;padding:14px 14px}
+  .slip-main .c-ev,.slip-main .c-conf,.slip-main .c-stake{grid-column:2}
+  .slip-main .c-ev::before{content:"Edge ";font:500 12.5px var(--text);color:var(--ink2)}
+  .slip-main .c-stake::before{content:"Stake ";font:500 12.5px var(--text);color:var(--ink2)}
+  .slip-main .c-conf::before{content:"Confidence ";font:500 12.5px var(--text);color:var(--ink2)}
+  .slip-main .c-conf .meter{max-width:160px}
+  .slip-detail{padding:0 14px 16px}
+  .lanes{grid-template-columns:1fr}.lane{border-right:0;padding-left:0 !important;border-bottom:1px solid var(--rule)}
+}
+</style>
+</head>
+<body>
+<div class="shell">
+  <aside class="rail">
+    <div class="logo">Edge<b>Desk</b></div>
+    <nav class="nav" id="nav" aria-label="Sections"></nav>
+    <div class="rail-foot">
+      <span id="stamp">Loading…</span>
+      <button class="btn" id="refresh" type="button">Refresh data</button>
+      <button class="btn" id="theme" type="button">Switch theme</button>
+    </div>
+  </aside>
+  <main id="main" tabindex="-1"><div class="empty"><span class="spin"></span> Loading today's board…</div></main>
+</div>
+<script>
+const VIEWS=[["today","Today"],["analyzer","Bet analyzer"],["parlays","Parlays"],["props","Props & alt lines"],["games","Games"],
+ ["money","Money trail"],["markets","Markets"],["news","News"],["sources","Sources"]];
+const store={get(k,d){try{return localStorage.getItem(k)??d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,v)}catch(e){}}};
+let D=null, view=store.get("ed-view","today"), league="All", open=new Set(), lineMkt="ml", newsTab="world", drew=false,
+    propTab="props", gameTab="lines", moneyTab="all";
+if(!VIEWS.some(v=>v[0]===view))view="today";
+const $=s=>document.querySelector(s);
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const pct=(x,d=1)=>x==null?"–":(x*100).toFixed(d)+"%";
+const sgn=(x,d=1)=>x==null||isNaN(x)?"–":(x>0?"+":"")+Number(x).toFixed(d);
+const ago=iso=>{if(!iso)return"";const m=(Date.now()-new Date(iso))/6e4;return m<1?"just now":m<60?Math.round(m)+" min ago":m<1440?Math.round(m/60)+" h ago":Math.round(m/1440)+" d ago"};
+const when=iso=>{if(!iso)return"";const d=new Date(iso);return isNaN(d)?"":d.toLocaleString([], {weekday:"short",hour:"numeric",minute:"2-digit"})};
+function spark(v,w=110,h=26){if(!v||v.length<2)return"";const mn=Math.min(...v),mx=Math.max(...v),r=mx-mn||1;
+  const pts=v.map((y,i)=>`${(i/(v.length-1)*w).toFixed(1)},${(h-2-(y-mn)/r*(h-4)).toFixed(1)}`).join(" ");
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true"><polyline fill="none" stroke="var(--${v[v.length-1]>=v[0]?"win":"loss"})" stroke-width="1.6" points="${pts}"/></svg>`}
+const MKT={moneyline:"Moneyline",spread:"Spread",total:"Total",alt_spread:"Alt spread",alt_total:"Alt total",prop:"Player prop",alt_prop:"Alt player line"};
+const seg=(key,cur,opts)=>`<div class="seg" role="group">${opts.map(([k,l])=>`<button type="button" data-seg="${key}:${k}" aria-pressed="${k===cur}">${l}</button>`).join("")}</div>`;
+
+function tier(c,i){const conf=c.ai_confidence??c.confidence;
+  if((i<3&&c.ev>=.03&&conf>=50)||(c.ai_verdict==="bet"&&i<3))return["best","Best bet"];
+  return c.ev>=.03&&conf>=45?["solid","Solid"]:["lean","Lean"]}
+
+function counts(){if(!D)return{};return{today:(D.bets||[]).length,parlays:(D.parlays||[]).length,props:(D.props_board||[]).length+(D.alt_board||[]).length,
+  games:(D.games||[]).filter(g=>g.n_books>1||g.model).length,money:(D.money_trail||[]).length}}
+function go(v){view=v;store.set("ed-view",view);league="All";nav();render();$("#main").focus({preventScroll:true});window.scrollTo(0,0)}
+function nav(){const c=counts();$("#nav").innerHTML=VIEWS.map(([k,l])=>`<button type="button" data-v="${k}" ${k===view?'aria-current="page"':""}><span>${l}</span>${c[k]!=null?`<span class="count num">${c[k]}</span>`:""}</button>`).join("");
+  document.querySelectorAll("#nav button").forEach(b=>b.onclick=()=>go(b.dataset.v))}
+async function load(){
+  const r=await fetch("/api/dashboard").then(r=>r.json()).catch(()=>null);
+  if(r){$("#refresh").disabled=r.running;$("#refresh").innerHTML=r.running?`<span class="spin"></span> Updating…`:"Refresh data";
+    $("#refresh").title=r.running?(r.progress||""):"";
+    if(r.dashboard&&(!D||D.generated!==r.dashboard.generated)){D=r.dashboard;nav();render()}
+    if(!r.dashboard)$("#main").innerHTML=`<div class="empty"><span class="spin"></span> ${esc(r.progress||"Building today's board — about two minutes on first run.")}</div>`;
+    if(D)$("#stamp").textContent="Updated "+ago(D.generated)+(D.counts?` from ${D.counts.books} books`:"");}
+  setTimeout(load,r&&(r.running||!D)?3000:30000)}
+$("#refresh").onclick=async()=>{await fetch("/api/refresh",{method:"POST"});setTimeout(load,400)};
+$("#theme").onclick=()=>{const cur=document.documentElement.dataset.theme||(matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light");
+  const nx=cur==="dark"?"light":"dark";document.documentElement.dataset.theme=nx;store.set("ed-theme",nx)};
+(()=>{const t=store.get("ed-theme",null);if(t)document.documentElement.dataset.theme=t})();
+
+function render(){if(!D)return;const f={today,analyzer,parlays,props,games,money,markets,news,sources}[view]||today;
+  $("#main").innerHTML=f();wire()}
+function wire(){
+  document.querySelectorAll(".slip-main").forEach(b=>b.onclick=()=>{const row=b.closest(".slip-row"),id=row.dataset.id;
+    const o=row.dataset.open!=="true";row.dataset.open=o;b.setAttribute("aria-expanded",o);o?open.add(id):open.delete(id)});
+  document.querySelectorAll("[data-league]").forEach(b=>b.onclick=()=>{league=b.dataset.league;render()});
+  document.querySelectorAll("[data-lm]").forEach(b=>b.onclick=()=>{lineMkt=b.dataset.lm;render()});
+  document.querySelectorAll("[data-news]").forEach(b=>b.onclick=()=>{newsTab=b.dataset.news;render()});
+  document.querySelectorAll("[data-seg]").forEach(b=>b.onclick=()=>{const [k,v]=b.dataset.seg.split(":");
+    if(k==="prop")propTab=v;if(k==="game")gameTab=v;if(k==="money")moneyTab=v;league="All";render()});
+  document.querySelectorAll("[data-go]").forEach(b=>b.onclick=()=>go(b.dataset.go));
+  wireAnalyzer();
+  if(view==="today"&&!drew){drew=true;setTimeout(()=>document.querySelector("#main .slip")?.classList.remove("draw"),1800)}
+}
+function leagueFilter(items){const ls=[...new Set(items.map(x=>x.league).filter(Boolean))];if(ls.length<2)return"";
+  return `<div class="filters" role="group" aria-label="Filter by league">${["All",...ls].map(l=>`<button type="button" data-league="${esc(l)}" aria-pressed="${l===league}">${esc(l)}</button>`).join("")}</div>`}
+const byLeague=items=>league==="All"?items:items.filter(x=>x.league===league);
+
+// ---------------------------------------------------------------- the slip
+function slip(items,{drawFirst=false,showTier=true}={}){
+  if(!items.length)return`<div class="panel empty">Nothing clears the bar here right now. The board refreshes every 30 minutes as lines move.</div>`;
+  return `<div class="slip ${drawFirst&&!drew?"draw":""}" role="list">
+  <div class="slip-head" aria-hidden="true"><span>Rank</span><span>Pick</span><span>Best price</span><span>Edge</span><span>Confidence</span><span>Stake</span></div>
+  ${items.map((c,i)=>row(c,i,showTier)).join("")}</div>`}
+function row(c,i,showTier){
+  const [tk,tl]=showTier?tier(c,i):["",""],isOpen=open.has(c.id),conf=Math.round(c.ai_confidence??c.confidence);
+  const pickHtml=tk==="best"?`<span class="hl">${esc(c.pick)}</span>`:esc(c.pick);
+  return `<div class="slip-row ${tk}" role="listitem" data-id="${esc(c.id)}" data-open="${isOpen}">
+   <button type="button" class="slip-main" aria-expanded="${isOpen}">
+    <span class="rank num">${i+1}</span>
+    <span style="min-width:0"><span class="pick">${pickHtml}</span>
+      <span class="sub">${tk==="best"?`<span class="tier best">Best bet</span>`:""}<span>${[showTier&&tk!=="best"?tl:"",MKT[c.market]||"Prediction market",c.type==="sports"?c.league:"",c.title,when(c.starts)].filter(Boolean).map(esc).join("  ·  ")}</span></span></span>
+    <span class="price num">${esc(c.price)}<small>${esc(c.venue)}</small></span>
+    <span class="ev num c-ev ${c.ev>0?"good":"bad"}">${sgn(c.ev*100)}%</span>
+    <span class="c-conf"><span class="num">${conf}</span><span class="meter" aria-hidden="true"><i style="width:${conf}%"></i></span></span>
+    <span class="stake num c-stake">${(c.kelly*100).toFixed(1)}%</span>
+   </button>
+   <div class="slip-detail">${detail(c)}</div></div>`}
+function detail(c){const s=c.social||{},co=c.coaches||{},ta=c.tactics||{};const implied=c.p_model-c.edge;
+  return `<p class="thebet">${esc(c.plain_bet||"").replace(/^The bet:/,"<b>The bet</b>")}</p>
+  <p class="why">${esc(c.ai_rationale||c.rationale||"")}</p>${c.ai_risk?`<p class="flag">Risk: ${esc(c.ai_risk)}</p>`:""}
+  <div class="cols">
+   <div><h4>How the probability was built</h4><table class="kv"><tbody>
+     ${(c.factors||[]).map(f=>`<tr><td>${esc(f.label)}${f.note?`<div class="note">${esc(f.note)}</div>`:""}</td><td class="num">${esc(f.value)}</td></tr>`).join("")}
+     <tr><td><b>Final estimate</b> vs price</td><td class="num"><b>${pct(c.p_model)}</b> / ${pct(implied)}</td></tr></tbody></table>
+     ${c.public?`<p class="note">${esc(c.public)}</p>`:""}</div>
+   <div><h4>Statistical history</h4><ul class="list">${[...(c.model_components||[]),...(c.context||[])].slice(0,7).map(x=>`<li>${esc(x)}</li>`).join("")||'<li class="muted">Priced from the market alone.</li>'}</ul></div>
+   ${c.h2h&&(c.h2h.vs_opp.length||c.h2h.vs_coach.length||c.h2h.trend)?`<div><h4>Player head-to-head</h4><table class="kv"><tbody>
+     ${c.h2h.season_avg!=null?`<tr><td>This season${c.h2h.trend?`<div class="note">${esc(c.h2h.trend)}</div>`:""}</td><td class="num">${c.h2h.season_avg} avg</td></tr>`:""}
+     ${c.h2h.vs_opp.length?`<tr><td>vs ${esc(c.h2h.opp)}<div class="note">${c.h2h.vs_opp.join(", ")}</div></td><td class="num">over in ${c.h2h.vs_opp_over} of ${c.h2h.vs_opp_n}</td></tr>`:""}
+     ${c.h2h.vs_coach.length?`<tr><td>vs coach ${esc(c.h2h.coach)}<div class="note">${c.h2h.vs_coach.join(", ")}</div></td><td class="num">over in ${c.h2h.vs_coach_over} of ${c.h2h.vs_coach_n}</td></tr>`:""}
+   </tbody></table></div>`:""}
+   ${(c.schemes||c.weather||c.trend)?`<div><h4>Schemes, form & weather</h4><ul class="list">
+     ${c.schemes?["away","home"].map(k=>`<li><b>${k==="home"?"Home":"Away"}</b> offense: ${esc(c.schemes[k].offense)}<div class="note">defense: ${esc(c.schemes[k].defense)}${c.trend&&c.trend[k]?" · form "+esc(c.trend[k]):""}</div></li>`).join(""):""}
+     ${c.weather?`<li>Weather: ${esc(c.weather)}</li>`:""}</ul></div>`:""}
+   ${c.research?`<div><h4>What people said in the last 30 days</h4><ul class="list">${(c.research.clusters||[]).slice(0,4).map(x=>`<li>${x.url?`<a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.title)}</a>`:esc(x.title)} <span class="note">${esc(x.sources)}</span></li>`).join("")}${(c.research.quotes||[]).slice(0,3).map(q=>`<li class="note">“${esc(q)}”</li>`).join("")}</ul>${(c.research.coverage||[]).length?`<p class="note">${c.research.coverage.map(esc).join(" · ")}</p>`:""}</div>`:""}
+   ${(co.home||co.away)?`<div><h4>Coaches, managers & tactics</h4><ul class="list">${["away","home"].filter(k=>co[k]).map(k=>`<li><b>${esc(co[k].name)}</b> <span class="muted">${esc(co[k].note||"")}</span>${ta[k]&&Object.keys(ta[k]).length?`<div class="note">${Object.entries(ta[k]).map(([a,b])=>`${esc(a.replace(/_/g," "))} ${esc(b)}`).join(", ")}</div>`:""}</li>`).join("")}</ul></div>`:""}
+   <div><h4>Every price we found</h4><table class="kv"><tbody>${(c.all_prices||[]).slice(0,10).map((v,i)=>`<tr><td>${esc(v.venue)}</td><td class="num ${i===0?"hl-cell":""}">${v.url?`<a href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.price)}</a>`:esc(v.price)}</td></tr>`).join("")||'<tr><td>'+esc(c.venue)+'</td><td class="num hl-cell">'+esc(c.price)+'</td></tr>'}</tbody></table></div>
+   ${s.mentions?`<div><h4>Social chatter</h4><p class="note">${s.bluesky} Bluesky and ${s.reddit} Reddit posts, tone ${sgn(s.tone,2)}</p>${(s.samples||[]).slice(0,3).map(p=>`<div class="post">${esc(p.text)} <a class="note" href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.source)}</a></div>`).join("")}</div>`:""}
+   ${(c.news||[]).length?`<div><h4>Headlines</h4><ul class="list">${c.news.map(n=>`<li>${/news\.google/.test(n.link)?esc(n.title):`<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.title)}</a>`} <span class="note">${esc(n.source)}</span></li>`).join("")}</ul></div>`:""}
+  </div>`}
+
+// ---------------------------------------------------------------- bet analyzer
+const newLeg=()=>({league:"",game:"",market:"moneyline",side:"",line:"",odds:"",player:"",stat:"",description:"",auto:true});
+let SLIP=(()=>{try{const s=JSON.parse(store.get("ed-slip","null"));if(s&&Array.isArray(s.legs)&&s.legs.length)return s}catch(e){}return{platform:"DraftKings",legs:[newLeg()],slipOdds:"",stake:""}})();
+let azRes=null,azBusy=false,propMenu={};
+const PICKEM=["PrizePicks","Underdog"];
+const saveSlip=()=>store.set("ed-slip",JSON.stringify(SLIP));
+const fmo=o=>o==null?"":(o>0?"+":"")+o;
+const upcoming=()=>(D.games||[]).filter(g=>new Date(g.date)>Date.now()-6e5).sort((a,b)=>a.date.localeCompare(b.date));
+const gameOf=id=>(D.games||[]).find(g=>String(g.id)===String(id));
+const propsFor=l=>(propMenu[l.game]||[]);
+function loadProps(id){if(!id||propMenu[id])return;propMenu[id]=[];fetch("/api/analyzer/props?game="+encodeURIComponent(id)).then(r=>r.json()).then(r=>{propMenu[id]=r.props||[];if(view==="analyzer")render()}).catch(()=>{})}
+// fill the line and odds from the chosen platform's current prices, until the user types their own
+function prefill(l){const g=gameOf(l.game);if(!g||!l.auto)return;const b=(g.lines||{})[SLIP.platform]||{};
+  if(l.market==="moneyline"){l.line="";l.odds=fmo(b["ml_"+l.side])}
+  else if(l.market==="spread"&&l.side){const any=b.spread_home!=null?b:Object.values(g.lines||{}).find(x=>x.spread_home!=null)||{};
+    l.line=any["spread_"+l.side]??"";l.odds=b["spread_"+l.side]===l.line?fmo(b[`spread_${l.side}_odds`]):""}
+  else if(l.market==="total"&&l.side){const any=b.total!=null?b:Object.values(g.lines||{}).find(x=>x.total!=null)||{};
+    l.line=any.total??"";l.odds=b.total===l.line?fmo(b[l.side+"_odds"]):""}
+  else if(l.market==="prop"){const row=propsFor(l).find(r=>r.player===l.player&&r.stat===l.stat);if(!row)return;
+    if(/^anytime/.test(l.stat)){l.side="over";l.line=0.5}
+    const has=(x,s)=>x[s]&&x[s][SLIP.platform];let ln=row.lines.find(x=>String(x.line)===String(l.line))||row.lines.find(x=>has(x,"over")&&has(x,"under"))||row.lines.find(x=>x.over&&x.under)||row.lines.find(x=>has(x,"over"))||row.lines[0];
+    if(ln){l.line=ln.line;l.side=l.side||"over";l.odds=((ln[l.side]||{})[SLIP.platform])||""}}}
+const opt=(v,t,cur)=>`<option value="${esc(v)}" ${String(v)===String(cur)?"selected":""}>${esc(t)}</option>`;
+const fld=(label,html,w="w2")=>`<label class="field ${w}"><span>${label}</span>${html}</label>`;
+function legForm(l,i){const gs=upcoming(),leagues=[...new Set(gs.map(g=>g.league))],g=gameOf(l.game),pick=PICKEM.includes(SLIP.platform);
+  const list=gs.filter(g=>!l.league||g.league===l.league);
+  const a=f=>`data-leg="${i}" data-f="${f}"`;
+  let h=fld("League",`<select ${a("league")}>${opt("","All leagues",l.league)}${leagues.map(x=>opt(x,x,l.league)).join("")}</select>`)+
+    fld("Game",`<select ${a("game")}>${opt("","Not listed / something else",l.game)}${list.map(x=>opt(x.id,`${x.away.display} @ ${x.home.display} · ${when(x.date)}`,l.game)).join("")}</select>`,"w4");
+  if(!g){h+=fld("Describe the bet",`<input type="text" ${a("description")} value="${esc(l.description)}" placeholder="e.g. Lakers to win the title" maxlength="140">`,"w4")}
+  else{
+    h+=fld("Bet type",`<select ${a("market")}>${[["moneyline","Moneyline (to win)"],["spread","Spread"],["total","Total (over/under)"],["prop","Player prop"],["other","Something else"]].map(([k,t])=>opt(k,t,l.market)).join("")}</select>`);
+    if(l.market==="moneyline")h+=fld("Pick",`<select ${a("side")}>${opt("","Choose…",l.side)}${opt("away",g.away.display,l.side)}${opt("home",g.home.display,l.side)}${g.sport==="soccer"?opt("draw","Draw",l.side):""}</select>`,"w2");
+    if(l.market==="spread")h+=fld("Team",`<select ${a("side")}>${opt("","Choose…",l.side)}${opt("away",g.away.display,l.side)}${opt("home",g.home.display,l.side)}</select>`)+
+      fld("Spread",`<input type="number" step="0.5" ${a("line")} value="${esc(l.line)}" placeholder="-3.5">`,"w2");
+    if(l.market==="total")h+=fld("Side",`<select ${a("side")}>${opt("","Choose…",l.side)}${opt("over","Over",l.side)}${opt("under","Under",l.side)}</select>`)+
+      fld("Total",`<input type="number" step="0.5" ${a("line")} value="${esc(l.line)}" placeholder="44.5">`,"w2");
+    if(l.market==="prop"){const rows=propsFor(l),players=[...new Set(rows.map(r=>r.player))],stats=rows.filter(r=>r.player===l.player),row=stats.find(r=>r.stat===l.stat),any=/^anytime/.test(l.stat);
+      if(!rows.length)h+=`<div class="field w4"><span>Player</span><span class="note" style="padding:8px 0">No player props are posted for this game yet. Choose “Something else” to enter it by hand.</span></div>`;
+      else{h+=fld("Player",`<select ${a("player")}>${opt("","Choose…",l.player)}${players.map(p=>opt(p,p,l.player)).join("")}</select>`)+
+        fld("Stat",`<select ${a("stat")}>${opt("","Choose…",l.stat)}${stats.map(r=>opt(r.stat,r.label,l.stat)).join("")}</select>`);
+        if(row&&!any)h+=fld("Over / under",`<select ${a("side")}>${opt("over","Over",l.side)}${opt("under","Under",l.side)}</select>`)+
+          fld("Line",`<input type="number" step="0.5" ${a("line")} value="${esc(l.line)}" list="ln${i}"><datalist id="ln${i}">${row.lines.map(x=>`<option value="${x.line}">`).join("")}</datalist>`,"w2")}}
+    if(l.market==="other")h+=fld("Describe the bet",`<input type="text" ${a("description")} value="${esc(l.description)}" placeholder="e.g. first team to score" maxlength="140">`,"w4");
+  }
+  h+=fld(pick?"Odds (leave blank)":"Your odds",`<input type="text" inputmode="text" ${a("odds")} value="${esc(l.odds)}" placeholder="${pick?"":/Polymarket|Kalshi/.test(SLIP.platform)?"62¢":"-110"}" autocomplete="off">`,"w2");
+  return `<div class="leg"><div class="leg-top"><b>${SLIP.legs.length>1?"Leg "+(i+1):"Your bet"}</b>${SLIP.legs.length>1?`<button type="button" class="x" data-rm="${i}" aria-label="Remove leg ${i+1}">×</button>`:""}</div><div class="leg-grid">${h}</div></div>`}
+function analyzer(){const P=D.platforms||["DraftKings","FanDuel","BetMGM","Caesars","Other"],n=SLIP.legs.length,pick=PICKEM.includes(SLIP.platform);
+  return header("Bet analyzer",`Enter a bet or a parlay you're thinking of placing and where you'd place it. EdgeDesk prices each leg with the same models as the daily picks and gives the bet a <span class="hl">confidence score</span> out of 100.`)+
+  `<div class="az"><section class="panel"><form id="azform" autocomplete="off">
+    <div class="leg-grid" style="margin-bottom:12px">${fld("Where are you betting?",`<select data-slip="platform">${P.map(p=>opt(p,p,SLIP.platform)).join("")}</select>`,"w3")}
+      ${fld("Stake (optional)",`<input type="text" inputmode="decimal" data-slip="stake" value="${esc(SLIP.stake)}" placeholder="$25">`,"w3")}</div>
+    ${SLIP.legs.map(legForm).join("")}
+    ${n>1||pick?`<div class="leg-grid">${fld(pick?"What the slip pays if every pick hits":"Total odds shown on your slip (optional)",`<input type="text" data-slip="slipOdds" value="${esc(SLIP.slipOdds)}" placeholder="${pick?"3x":"+595"}">`,"w6")}</div>`:""}
+    <div class="az-actions"><button type="button" class="btn" id="azadd">+ Add a leg</button><button type="submit" class="btn primary" ${azBusy?"disabled":""}>${azBusy?'<span class="spin"></span> Analyzing…':n>1?"Analyze parlay":"Analyze bet"}</button>
+      <button type="button" class="btn" id="azclear">Clear</button></div>
+    <p class="note" style="margin:12px 0 0">Odds can be American (-110, +150), decimal (1.91), or a prediction-market price (62¢). Lines and odds fill in from the platform you chose when we have them; change them to match your slip.</p>
+  </form></section><section class="panel" aria-live="polite">${azResult()}</section></div>`}
+function ring(s){const r=52,c=2*Math.PI*r,col=s>=58?"var(--win)":s>=42?"var(--brand)":"var(--loss)";
+  return `<svg width="128" height="128" viewBox="0 0 128 128" role="img" aria-label="Confidence score ${s} out of 100"><circle cx="64" cy="64" r="${r}" fill="none" stroke="var(--chip)" stroke-width="11"/><circle cx="64" cy="64" r="${r}" fill="none" stroke="${col}" stroke-width="11" stroke-linecap="round" stroke-dasharray="${(c*s/100).toFixed(1)} ${c.toFixed(1)}" transform="rotate(-90 64 64)"/><text x="64" y="74" text-anchor="middle" font-family="Barlow Condensed,sans-serif" font-weight="700" font-size="40" fill="var(--ink)">${s}</text></svg>`}
+function azResult(){const r=azRes;
+  if(!r)return `<h3>Confidence score</h3><p class="note" style="margin-top:8px">Fill in the bet and press Analyze. You'll get a score out of 100, the chance it wins, the fair odds, and whether another book has a better price.</p>
+    <table class="kv" style="margin-top:10px"><tbody><tr><td>70 and up</td><td>Strong: the price is clearly better than the true odds</td></tr><tr><td>58 to 69</td><td>Good: a real edge in your favour</td></tr><tr><td>42 to 57</td><td>Fair: close to break-even</td></tr><tr><td>30 to 41</td><td>Weak: the usual sportsbook margin is against you</td></tr><tr><td>Under 30</td><td>Poor: priced well short of the true odds</td></tr></tbody></table>`;
+  const legs=(r.legs||[]).map(l=>`<tr><td><b>${esc(l.label)}</b>${l.game?`<div class="note">${esc(l.league)} · ${esc(l.game)}</div>`:""}${l.basis?`<div class="note">${esc(l.basis)}</div>`:""}${(l.notes||[]).map(x=>`<div class="note">${esc(x)}</div>`).join("")}${l.best?`<div class="note"><span class="hl">Better price</span> ${esc(l.best.price)} at ${esc(l.best.venue)}</div>`:""}</td>
+    <td class="c num">${esc(l.price||"–")}<div class="note">fair ${esc(l.fair_price||"–")}</div></td><td class="c num">${l.p!=null?pct(l.p):"–"}</td><td class="c num ${l.ev>0?"good":l.ev<0?"bad":""}">${l.ev!=null?sgn(l.ev*100)+"%":"–"}</td><td class="c num"><b>${l.score??"–"}</b></td></tr>`).join("");
+  const table=legs?`<div class="tablewrap" style="margin-top:14px"><table class="grid"><thead><tr><th>${r.legs.length>1?"Leg":"Bet"}</th><th class="c">Your price</th><th class="c">Chance</th><th class="c">Edge</th><th class="c">Score</th></tr></thead><tbody>${legs}</tbody></table></div>`:"";
+  if(r.error)return `<h3>Confidence score</h3><p class="err" style="margin-top:8px">${esc(r.error)}</p>${table}`;
+  return `<div class="dial">${ring(r.score)}<div style="flex:1;min-width:200px"><h3>Confidence score</h3><span class="grade g-${esc(r.grade)}">${esc(r.grade)}</span><p style="margin:8px 0 0">${esc(r.verdict)}</p></div></div>
+  <div class="az-tiles"><div class="tile"><div class="note">Chance it wins</div><div class="v num">${pct(r.p)}</div></div><div class="tile"><div class="note">Your odds</div><div class="v num">${esc(r.price)}</div></div>
+   <div class="tile"><div class="note">Fair odds</div><div class="v num">${esc(r.fair_price)}</div></div><div class="tile"><div class="note">Expected value</div><div class="v num ${r.ev>0?"good":"bad"}">${sgn(r.ev*100)}%</div></div>
+   ${r.payout?`<div class="tile"><div class="note">Pays if it wins</div><div class="v num">$${r.payout.toFixed(2)}</div></div><div class="tile"><div class="note">Average result</div><div class="v num ${r.expected>0?"good":"bad"}">${r.expected>0?"+":"−"}$${Math.abs(r.expected).toFixed(2)}</div></div>`:""}</div>
+  ${r.stake_pct?`<p class="thebet"><b>Stake</b> Up to ${(r.stake_pct*100).toFixed(1)}% of your bankroll (fractional Kelly) at ${esc(r.price)} or better on ${esc(r.platform)}.</p>`:`<p class="note">No stake is suggested when the price is at or below the fair odds.</p>`}
+  ${(r.notes||[]).length?`<ul class="list">${r.notes.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>`:""}${table}
+  <p class="note" style="margin-top:12px;max-width:80ch">The score measures whether the price is worth taking, not only whether the bet is likely to win: 50 is a fair price, and edge in your favour counts for more when more data backs it (data strength here: ${r.data_confidence}/100). Estimates, not guarantees.</p>`}
+function wireAnalyzer(){const f=$("#azform");if(!f)return;
+  SLIP.legs.forEach(l=>{if(l.game&&l.market==="prop")loadProps(l.game)});
+  f.addEventListener("change",e=>{const t=e.target;
+    if(t.dataset.slip==="platform"){SLIP.platform=t.value;SLIP.legs.forEach(prefill);saveSlip();render();return}
+    if(t.dataset.leg==null||t.tagName!=="SELECT")return;const l=SLIP.legs[+t.dataset.leg],k=t.dataset.f;l[k]=t.value;
+    if(k==="league"&&l.game&&(gameOf(l.game)||{}).league!==l.league&&l.league)l.game="";
+    if(k==="game"||k==="league"){Object.assign(l,{side:"",line:"",odds:"",player:"",stat:"",auto:true});if(!["moneyline","spread","total","prop","other"].includes(l.market))l.market="moneyline"}
+    if(k==="market")Object.assign(l,{side:"",line:"",odds:"",player:"",stat:"",auto:true});
+    if(k==="player")Object.assign(l,{stat:"",line:"",odds:"",auto:true});
+    if(k==="stat")Object.assign(l,{line:"",odds:"",side:"over",auto:true});
+    if(l.market==="prop")loadProps(l.game);
+    prefill(l);saveSlip();render()});
+  f.addEventListener("input",e=>{const t=e.target;if(t.tagName!=="INPUT")return;
+    if(t.dataset.slip){SLIP[t.dataset.slip]=t.value;saveSlip();return}
+    if(t.dataset.leg==null)return;const l=SLIP.legs[+t.dataset.leg];l[t.dataset.f]=t.value;
+    if(t.dataset.f==="odds")l.auto=false;
+    if(t.dataset.f==="line"&&l.auto){const keep=l.line;prefill(Object.assign(l,{line:keep}));l.line=keep}
+    saveSlip()});
+  f.addEventListener("submit",async e=>{e.preventDefault();if(azBusy)return;azBusy=true;render();
+    const body={platform:SLIP.platform,stake:SLIP.stake,slip_odds:SLIP.legs.length>1||PICKEM.includes(SLIP.platform)?SLIP.slipOdds:"",
+      legs:SLIP.legs.map(l=>({game:l.game,market:l.game?l.market:"other",side:l.side,line:l.line,odds:l.odds,player:l.player,stat:l.stat,description:l.description}))};
+    try{azRes=await fetch("/api/analyze",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)}).then(r=>r.json())}
+    catch(err){azRes={error:"Couldn't reach EdgeDesk. Check that it's running and try again."}}
+    azBusy=false;render()});
+  $("#azadd").onclick=()=>{if(SLIP.legs.length<12){SLIP.legs.push(newLeg());saveSlip();render()}};
+  $("#azclear").onclick=()=>{SLIP={platform:SLIP.platform,legs:[newLeg()],slipOdds:"",stake:""};azRes=null;saveSlip();render()};
+  f.querySelectorAll("[data-rm]").forEach(b=>b.onclick=()=>{SLIP.legs.splice(+b.dataset.rm,1);saveSlip();render()})}
+
+// ---------------------------------------------------------------- views
+function header(title,lede){return `<div class="top"><div><h1>${title}</h1><p class="lede">${lede}</p></div></div>`}
+function today(){const b=D.bets||[],cn=D.counts||{};const best=b.filter((c,i)=>tier(c,i)[0]==="best").length;
+  return header("Today's card",`${best?`<span class="hl">${best} best bet${best>1?"s":""}</span> and `:""}${b.length-best} more, picked from ${(cn.candidates||D.candidates_considered||0).toLocaleString()} priced bets across ${cn.books||"?"} sportsbooks, Polymarket and Kalshi. Open a pick to see the reasoning and exactly what to bet.`)+
+  `<div class="today"><div>${D.brief?`<p class="brief">${esc(D.brief)}</p>`:""}${slip(b,{drawFirst:true})}
+   <p class="note" style="margin-top:12px;max-width:80ch">${esc(D.ai||"")} Stake is a share of your bankroll (fractional Kelly). Edges are estimates, not guarantees. Bet only what you can afford to lose, where it's legal.</p></div>
+   <aside class="side">${parlayPanel()}${moneyPanel()}${tapePanel()}</aside></div>`}
+function parlayPanel(){const p=(D.parlays||[]).find(x=>x.name==="Balanced treble")||(D.parlays||[])[0];if(!p)return"";
+  return `<section class="panel"><h3>Suggested parlay</h3><ul class="list" style="margin-top:6px">${p.legs.map(l=>`<li>${esc(l.pick)} <span class="note num">${esc(l.price)}</span><div class="note">${esc(l.title)}</div></li>`).join("")}</ul>
+  <p class="num" style="margin:8px 0 0"><b>${esc(p.price)}</b> at ${esc(p.book)} <span class="note">· ${pct(p.p,0)} chance</span></p>
+  <p style="margin:10px 0 0"><button type="button" class="btn" data-go="parlays">See all parlays</button></p></section>`}
+function moneyPanel(){const t=(D.connections||[]).slice(0,4);if(!t.length)return"";
+  return `<section class="panel"><h3>Where the money's moving</h3><ul class="list" style="margin-top:8px">${t.map(x=>`<li><b>${esc(x.name)}</b><div class="note">${x.stats.headlines} headlines, ${x.stats.markets} markets, ${x.stats.trades} Congress trades${x.stats.committee_trades?` (${x.stats.committee_trades} by committee members)`:""}</div></li>`).join("")}</ul>
+  <p style="margin:12px 0 0"><button type="button" class="btn" data-go="money">Open the money trail</button></p></section>`}
+function tapePanel(){const q=(D.tape||[]).filter(x=>x.group==="index").slice(0,7);if(!q.length)return"";
+  return `<section class="panel"><h3>Market tape</h3><table class="kv" style="margin-top:6px"><tbody>${q.map(x=>`<tr><td>${esc(x.label)}</td><td class="num">${x.price!=null?x.price.toLocaleString(undefined,{maximumFractionDigits:2}):"–"}</td><td class="num ${x.chg1d>=0?"good":"bad"}">${sgn(x.chg1d,2)}%</td></tr>`).join("")}</tbody></table></section>`}
+function props(){const P=D.props_board||[],A=D.alt_board||[],L=D.line_board||[];
+  const tabs=[["props",`Player props (${P.filter(x=>x.market==="prop").length})`],["altprops",`Alt player lines (${P.filter(x=>x.market==="alt_prop").length})`],["alts",`Alt spreads & totals (${A.length})`],["main",`Main lines (${L.length})`]];
+  const items={props:P.filter(x=>x.market==="prop"),altprops:P.filter(x=>x.market==="alt_prop"),alts:A,main:L}[propTab]||P;
+  const blurb={props:"Each prop is priced from the player's own game logs: this season, the trend over his last three games, his history against this opponent and against the opposing head coach, the defense he's facing and the weather. It's then checked against the sharpest book's no-vig line.",
+    altprops:"FanDuel's alternate player lines (20+, 25+, 30+ yards…) priced off the same player model.",
+    alts:"Every alternate spread and total from Pinnacle and Bovada, priced against the team model's projected margin and total.",
+    main:"The best main moneylines, spreads and totals after shopping every book."}[propTab];
+  return header("Props & alt lines",blurb)+seg("prop",propTab,tabs)+leagueFilter(items)+slip(byLeague(items),{showTier:false})}
+function parlays(){const P=D.parlays||[];
+  return header("Parlays",`Built only from picks that are positive-edge on their own, one per game so the legs don't depend on each other, all priced at a single sportsbook so you can actually place it. More legs means a bigger payout and a much lower chance of winning.`)+
+  (P.length?P.map(p=>`<section class="panel thread"><div class="thread-top"><h2>${esc(p.name)}</h2><span class="price num">${esc(p.price)} <span class="note">at ${esc(p.book)}</span></span></div>
+    <p class="note" style="margin:4px 0 10px">${esc(p.blurb)}</p>
+    <table class="grid"><thead><tr><th>Leg</th><th>Game</th><th class="c">Price</th><th class="c">Our chance</th></tr></thead><tbody>
+    ${p.legs.map(l=>`<tr><td><b>${esc(l.pick)}</b><div class="note">${esc(MKT[l.market]||"")} · ${esc(l.league)}</div></td><td>${esc(l.title)}<div class="note">${esc(when(l.starts))}</div></td><td class="c num">${esc(l.price)}</td><td class="c num">${pct(l.p,0)}</td></tr>`).join("")}
+    <tr><td colspan="2"><b>All ${p.legs.length} legs together</b></td><td class="c num"><span class="hl-cell" style="padding:1px 6px">${esc(p.price)}</span></td><td class="c num"><b>${pct(p.p,1)}</b></td></tr></tbody></table>
+    <p class="thebet" style="margin-top:14px">${esc(p.plain).replace(/^The parlay:/,"<b>The parlay</b>")}</p>
+    <p class="note">Expected value ${sgn(p.ev*100)}% at these prices. Break-even odds: ${esc(p.fair_price)}.</p></section>`).join(""):`<div class="panel empty">Not enough positive-edge picks at one sportsbook to build a parlay right now.</div>`)}
+const BOOKS=["Pinnacle","DraftKings","FanDuel","BetMGM","Caesars","BetRivers","bet365","Fanatics","Hard Rock","theScore Bet","Bally Bet","Bovada","Consensus","Opener"];
+function games(){return (gameTab==="models"?models:lines)()}
+function lines(){const all=(D.games||[]).filter(g=>g.n_books>1);const gs=byLeague(all).sort((a,b)=>a.date.localeCompare(b.date));
+  const present=BOOKS.filter(b=>gs.some(g=>g.lines&&g.lines[b]));
+  const fm=o=>(o>0?"+":"")+o;
+  const cell=(g,b,side)=>{const x=(g.lines||{})[b];if(!x)return null;
+    if(lineMkt==="ml")return x["ml_"+side]!=null?{t:fm(x["ml_"+side]),v:dec(x["ml_"+side])}:null;
+    if(lineMkt==="spread"){const l=x["spread_"+side],o=x[`spread_${side}_odds`];return l!=null&&o?{t:(l>0?"+":"")+l+" "+fm(o),v:l*10+dec(o)}:null}
+    const k=side==="home"?"under":"over",o=x[k+"_odds"];return x.total!=null&&o?{t:(k==="over"?"o":"u")+x.total+" "+fm(o),v:(k==="over"?-x.total:x.total)*10+dec(o)}:null};
+  const dec=o=>o>0?1+o/100:1+100/-o;
+  const rowFor=(g,side)=>{const cells=present.map(b=>cell(g,b,side));
+    let bi=-1,bv=-Infinity;cells.forEach((c,i)=>{if(!c||["Consensus","Opener"].includes(present[i]))return;if(c.v>bv){bv=c.v;bi=i}});
+    const label=lineMkt==="total"?(side==="home"?"Under":"Over"):g[side].display;
+    return `<tr><td>${esc(label)}</td>${cells.map((c,i)=>`<td class="c num ${i===bi?"hl-cell":""}">${c?esc(c.t):'<span class="muted">–</span>'}</td>`).join("")}</tr>`};
+  return header("Games",`${present.length} books side by side for every game. The highlighted price is the best available for that side, so that's where to place it. Opener and Consensus are reference columns and can't be bet.`)+
+  seg("game",gameTab,[["lines","Line shop"],["models","Models, schemes & coaches"]])+`<br><div class="seg" role="group" aria-label="Market">${[["ml","Moneyline"],["spread","Spread"],["total","Total"]].map(([k,l])=>`<button type="button" data-lm="${k}" aria-pressed="${k===lineMkt}">${l}</button>`).join("")}</div>`+
+  leagueFilter(all)+`<div class="tablewrap"><table class="grid"><thead><tr><th>Game</th>${present.map(b=>`<th class="c">${esc(b)}</th>`).join("")}</tr></thead><tbody>
+  ${gs.slice(0,90).map(g=>{const pm=(g.public||{}).ml_home;
+    return `<tr class="gamehead"><td colspan="${present.length+1}">${esc(g.away.display)} at ${esc(g.home.display)} <span class="note">${esc(g.league)}, ${esc(when(g.date))}${pm?`. Public: ${pm.tickets}% of tickets and ${pm.money}% of money on ${esc(g.home.abbr)}`:""}</span></td></tr>${rowFor(g,"away")}${rowFor(g,"home")}`}).join("")}
+  </tbody></table></div>`}
+function models(){const all=(D.games||[]).filter(g=>g.model);const gs=byLeague(all).sort((a,b)=>a.date.localeCompare(b.date));
+  const inv=o=>o>0?100/(o+100):-o/(-o+100);
+  return header("Games",`The statistical model behind every price: current form and trend, scoring and efficiency history, offensive and defensive schemes, coach records and head-to-heads, weather, and where the model disagrees with the market by 4 points or more.`)+
+  seg("game",gameTab,[["lines","Line shop"],["models","Models, schemes & coaches"]])+leagueFilter(all)+
+  `<div class="tablewrap"><table class="grid"><thead><tr><th>Game and model inputs</th><th class="c">Model</th><th class="c">Market</th><th>Projection</th><th>Coaches &amp; managers</th><th>Schemes, form &amp; weather</th></tr></thead><tbody>
+  ${gs.slice(0,120).map(g=>{const m=g.model,co=m.coaches||{},ta=m.tactics||{};
+    const L=g.lines||{},pin=L.Pinnacle||L.Consensus||L.DraftKings||{};const mk=pin.ml_home&&pin.ml_away?inv(pin.ml_home)/(inv(pin.ml_home)+inv(pin.ml_away)):null;
+    const diff=mk!=null?m.p_home_model-mk:null;
+    const proj=m.margin_mu!=null?`${esc(g.home.abbr)} by ${sgn(m.margin_mu)}`+(m.total_mu?`<div class="note">total ${m.total_mu.toFixed(1)}</div>`:""):m.lam_home!=null?`${m.lam_home.toFixed(2)} – ${m.lam_away.toFixed(2)}<div class="note">expected score</div>`:"–";
+    return `<tr><td style="min-width:280px"><b>${esc(g.away.display)}</b> at <b>${esc(g.home.display)}</b><div class="note">${esc(g.league)}, ${esc(when(g.date))}</div><div class="note" style="margin-top:4px">${(m.components||[]).map(esc).join("<br>")}</div></td>
+      <td class="c num">${pct(m.p_home_model)}<div class="note">home</div></td><td class="c num">${mk!=null?pct(mk):"–"}${diff!=null&&Math.abs(diff)>=.04?`<div class="note ${diff>0?"good":"bad"}">${sgn(diff*100)} pts</div>`:""}</td>
+      <td class="num">${proj}</td>
+      <td>${["away","home"].filter(k=>co[k]).map(k=>`<div><b>${esc(co[k].name)}</b><div class="note">${esc(co[k].note||"")}${co[k].ats?`, ATS ${esc(co[k].ats)}`:""}</div></div>`).join("")||'<span class="muted">–</span>'}</td>
+      <td class="note">${m.schemes?["away","home"].map(k=>`<b>${esc(g[k].abbr)}</b> ${esc(m.schemes[k].offense)}; D: ${esc(m.schemes[k].defense)}${m.trend&&m.trend[k]?`<br>form: ${esc(m.trend[k])}`:""}`).join("<br>"):["away","home"].filter(k=>ta[k]&&Object.keys(ta[k]).length).map(k=>`<b>${esc(g[k].abbr)}</b> ${Object.entries(ta[k]).map(([a,b])=>`${esc(a.replace(/_/g," "))} ${esc(b)}`).join(", ")}`).join("<br>")||"–"}${g.weather&&g.weather.summary?`<br><b>Weather</b> ${esc(g.weather.summary)}`:""}</td></tr>`}).join("")}
+  </tbody></table></div>`}
+function money(){const all=D.money_trail||[];
+  const rows=all.filter(r=>moneyTab==="all"||r.kind===moneyTab||(moneyTab==="themes"));
+  const label={congress:"Congress",polymarket:"Polymarket",kalshi:"Kalshi"};
+  const n=k=>all.filter(r=>r.kind===k).length;
+  const head=header("Money trail",`Who is putting money where, and the news it lines up with: stock trades by members of Congress and senior officials (from Quiver and Kadoa), and large trades on Polymarket and Kalshi. Each row links to the headline it matches. These are correlations to look into, not proof of anything.`)+
+    seg("money",moneyTab,[["all",`All (${all.length})`],["congress",`Congress (${n("congress")})`],["polymarket",`Polymarket (${n("polymarket")})`],["kalshi",`Kalshi (${n("kalshi")})`],["themes","By news theme"],["detail","Congress detail"]]);
+  if(moneyTab==="themes")return head+connections(true);
+  if(moneyTab==="detail")return head+congress(true);
+  return head+`<div class="tablewrap"><table class="grid"><thead><tr><th>Who</th><th>Move</th><th class="c">Size</th><th>The news it lines up with</th></tr></thead><tbody>
+  ${rows.slice(0,80).map(r=>`<tr><td><b>${esc(r.who)}</b><div class="note">${esc(label[r.kind]||r.kind)} · ${esc(r.kind==="congress"?r.at:ago(r.at))}</div>${(r.committees||[]).length?`<div class="note"><span class="hl">${esc(r.committees.join(", "))}</span></div>`:""}${r.late?`<div class="note">Disclosed late</div>`:""}</td>
+    <td>${esc(r.what)}<div class="note">${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener">${esc(r.detail)}</a>`:esc(r.detail)}</div></td>
+    <td class="c num">${esc(r.size)}</td>
+    <td style="max-width:54ch">${(r.news||[]).slice(0,2).map(n=>`<div>${/news\.google/.test(n.link)?esc(n.title):`<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.title)}</a>`} <span class="note">${esc(n.source)}${n.strength==="theme"?" · same theme":""}</span></div>`).join("")||`<span class="muted">No matching headline today${r.theme?` (${esc(r.theme)})`:""}</span>`}${r.lobbying?`<div class="note" style="margin-top:4px"><span class="hl">Lobbying link</span> ${esc(r.lobbying)}. <span class="muted">Kadoa</span></div>`:""}</td></tr>`).join("")||`<tr><td colspan="4" class="muted">No trades in this group on the last refresh.</td></tr>`}
+  </tbody></table></div>`}
+function connections(embedded){const t=D.connections||[];const mx=Math.max(1,...t.map(x=>x.score));
+  return (embedded?"":header("Connections",`How today's news, prediction-market prices, Congress trades and sector moves line up, theme by theme.`))+
+  t.map(x=>`<section class="panel thread"><div class="thread-top"><h2>${esc(x.name)}</h2><span class="heat" title="Activity score ${x.score}" aria-label="Activity ${Math.round(x.score/mx*5)} of 5">${[1,2,3,4,5].map(n=>`<i class="${x.score/mx*5>=n-.5?"on":""}"></i>`).join("")}</span></div>
+   <p style="max-width:80ch;margin:8px 0 0">${esc(x.narrative)}</p>
+   <div class="lanes">
+    <div class="lane"><h4>In the news (${x.stats.headlines})</h4><ul class="list">${x.news.slice(0,4).map(n=>`<li>${/news\.google/.test(n.link)?esc(n.title):`<a href="${esc(n.link)}" target="_blank" rel="noopener">${esc(n.title)}</a>`}<div class="note">${esc(n.source)}</div></li>`).join("")||'<li class="muted">No headlines today</li>'}</ul></div>
+    <div class="lane"><h4>Prediction markets (${x.stats.markets})</h4><ul class="list">${x.markets.slice(0,4).map(m=>`<li><a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.question)}</a><div class="note num">${esc(m.venue)}, YES ${m.yes!=null?Math.round(m.yes*100)+"¢":"–"}${m.change24h?` <span class="${m.change24h>0?"good":"bad"}">${sgn(m.change24h*100,0)} pts today</span>`:""}</div></li>`).join("")||'<li class="muted">No markets matched</li>'}</ul></div>
+    <div class="lane"><h4>Congress trades (${x.stats.trades})</h4><ul class="list">${x.trades.slice(0,5).map(tr=>`<li><b>${esc(tr.ticker)}</b> <span class="${/purchase/i.test(tr.type)?"good":"bad"}">${/purchase/i.test(tr.type)?"bought":"sold"}</span> ${esc(tr.amount)}<div class="note">${esc(tr.member)} (${esc(tr.party)}), ${esc(tr.traded)}</div>${tr.relevant_committees&&tr.relevant_committees.length?`<div class="note"><span class="hl">${esc(tr.relevant_committees.slice(0,2).join(", "))}</span></div>`:""}</li>`).join("")||'<li class="muted">No trades in exposed stocks</li>'}</ul></div>
+    <div class="lane"><h4>Sector tape</h4><ul class="list">${x.etfs.map(e=>`<li>${esc(e.symbol)} ${esc(e.label||"")} <span class="num ${e.chg1d>=0?"good":"bad"}">${sgn(e.chg1d,2)}%</span></li>`).join("")||'<li class="muted">No sector ETF for this theme</li>'}</ul></div>
+   </div></section>`).join("")}
+function markets(){const p=D.prediction||{};
+  const tbl=rows=>`<div class="tablewrap"><table class="grid"><thead><tr><th>Market</th><th class="c">Yes</th><th class="c">24h</th><th class="c">Volume</th><th>Closes</th></tr></thead><tbody>${rows.map(m=>{const y=m.venue==="Polymarket"?(m.prices||[])[0]:m.mid,ch=m.change24h||0;
+    return `<tr><td><a href="${esc(m.url)}" target="_blank" rel="noopener">${esc(m.question)}${m.sub&&m.sub!==m.question?" — "+esc(m.sub):""}</a><div class="note">${esc(m.venue)}${m.event||m.league||m.category?", "+esc(m.event||m.league||m.category):""}</div></td><td class="c num">${y!=null?Math.round(y*100)+"¢":"–"}</td><td class="c num ${ch>0?"good":ch<0?"bad":""}">${sgn(ch*100,0)}</td><td class="c num">$${Math.round(m.volume24h).toLocaleString()}</td><td class="note">${esc(when(m.end))}</td></tr>`}).join("")}</tbody></table></div>`;
+  const q=D.tape||[];const tile=x=>`<div class="tile"><div class="note">${esc(x.label)}</div><div class="v num">${x.price!=null?x.price.toLocaleString(undefined,{maximumFractionDigits:2}):"–"}</div><div class="note num"><span class="${x.chg1d>=0?"good":"bad"}">${sgn(x.chg1d,2)}% today</span></div>${spark(x.spark,150,28)}</div>`;
+  return header("Markets","Stocks and sectors first, then the biggest 24-hour prediction-market moves with real volume, and the most-traded markets on Polymarket and Kalshi.")+
+  `<h2 style="margin:0 0 10px">Stocks & macro</h2><div class="tiles">${q.filter(x=>x.group==="index").map(tile).join("")}</div><h2 style="margin:24px 0 10px">Sectors</h2><div class="tiles">${q.filter(x=>x.group==="sector").map(tile).join("")}</div>
+  <h2 style="margin:24px 0 10px">Biggest prediction-market moves</h2>${tbl(p.movers||[])}<h2 style="margin:24px 0 10px">Polymarket</h2>${tbl((p.polymarket||[]).slice(0,30))}<h2 style="margin:24px 0 10px">Kalshi</h2>${tbl((p.kalshi||[]).slice(0,30))}`}
+function congress(embedded){const t=D.trails||[],m=D.members||[],tr=D.trades||[];
+  return (embedded?"":header("Congress trades",""))+
+  `<div class="tablewrap"><table class="grid"><thead><tr><th>Stock</th><th>Trades</th><th>Flags</th><th class="c">Since trade</th><th>What it lines up with</th></tr></thead><tbody>
+  ${t.slice(0,20).map(x=>`<tr><td><b>${esc(x.ticker)}</b><div class="note">${esc(x.company)}</div>${spark(x.spark)}</td><td class="num"><span class="good">${x.buys} bought</span>, <span class="bad">${x.sells} sold</span><div class="note">${esc(x.members.slice(0,3).join(", "))}</div></td>
+   <td>${x.flags.map(f=>`<div class="flag">${esc(f)}</div>`).join("")}</td><td class="c num ${x.move_since_first_trade>0?"good":"bad"}">${x.move_since_first_trade!=null?sgn(x.move_since_first_trade)+"%":"–"}</td><td style="max-width:52ch">${esc(x.ai_analysis||x.narrative)}</td></tr>`).join("")}</tbody></table></div>
+  <h2 style="margin:26px 0 10px">Most active members</h2><div class="tablewrap"><table class="grid"><thead><tr><th>Member</th><th class="c">Trades</th><th class="c">Est. volume</th><th class="c">Avg excess return</th><th>Top tickers</th></tr></thead><tbody>
+  ${m.slice(0,25).map(r=>`<tr><td>${esc(r.member)} <span class="note">${esc(r.party)}, ${esc(r.chamber)}</span></td><td class="c num">${r.trades}</td><td class="c num">$${Math.round(r.volume).toLocaleString()}</td><td class="c num ${r.avg_excess_return>0?"good":r.avg_excess_return<0?"bad":""}">${r.avg_excess_return==null?"–":sgn(r.avg_excess_return)+"%"}</td><td>${r.top_tickers.map(x=>`<span class="chip">${esc(x)}</span>`).join("")}</td></tr>`).join("")}</tbody></table></div>
+  <h2 style="margin:26px 0 10px">Latest disclosures</h2><div class="tablewrap"><table class="grid"><thead><tr><th>Traded</th><th>Member</th><th>Stock</th><th>Type</th><th>Amount</th></tr></thead><tbody>
+  ${tr.slice(0,60).map(x=>`<tr><td class="num">${esc(x.traded)}</td><td>${esc(x.member)} <span class="note">${esc(x.party)}</span></td><td><b>${esc(x.ticker)}</b> <span class="note">${esc((x.asset||"").slice(0,36))}</span></td><td class="${/purchase/i.test(x.type)?"good":/sale/i.test(x.type)?"bad":""}">${esc(x.type)}</td><td class="num">${esc(x.amount)}</td></tr>`).join("")}</tbody></table></div>`}
+function news(){const n=D.news||{};const tabs=[["world","World"],["us","U.S."],["mojo","Mother Jones"],["business","Business"],["tech","TLDR & tech"],["hn","Hacker News"],["sports","Sports"],["social","Social"]];
+  const items=newsTab==="social"?(D.social_pulse||[]).map(p=>({title:p.title||p.text,link:p.url,source:p.source,published:p.at})):newsTab==="mojo"?(n.us||[]).filter(i=>i.source==="Mother Jones"):(n[newsTab]||[]);
+  return header("News","World, U.S. and business headlines, Mother Jones, TLDR's tech and AI stories, Hacker News, sports, and Reddit's hottest threads.")+
+  `<div class="seg" role="group" aria-label="News section">${tabs.map(([k,l])=>`<button type="button" data-news="${k}" aria-pressed="${k===newsTab}">${l}</button>`).join("")}</div>
+  <div class="panel"><ul class="list">${items.slice(0,40).map(i=>`<li><a href="${esc(i.link)}" target="_blank" rel="noopener">${esc(i.title)}</a>${i.summary&&newsTab==="tech"?`<div class="note">${esc(i.summary)}</div>`:""}<div class="note">${esc(i.source)}${i.points?`, ${i.points} points`:""}${i.published?", "+ago(i.published):""}</div></li>`).join("")||'<li class="muted">Nothing loaded for this section on the last refresh.</li>'}</ul></div>`}
+function stocks(){const q=D.tape||[];const tile=x=>`<div class="tile"><div class="note">${esc(x.label)} (${esc(x.symbol)})</div><div class="v num">${x.price!=null?x.price.toLocaleString(undefined,{maximumFractionDigits:2}):"–"}</div><div class="note num"><span class="${x.chg1d>=0?"good":"bad"}">${sgn(x.chg1d,2)}% today</span>${x.chg1m!=null?`, <span class="${x.chg1m>=0?"good":"bad"}">${sgn(x.chg1m,1)}% this month</span>`:""}</div>${spark(x.spark,150,28)}</div>`;
+  return header("Stocks","Indices, rates, commodities and the sector ETFs that Connections ties to the news and to Congress trades.")+
+  `<h2 style="margin:0 0 10px">Indices & macro</h2><div class="tiles">${q.filter(x=>x.group==="index").map(tile).join("")}</div><h2 style="margin:24px 0 10px">Sectors</h2><div class="tiles">${q.filter(x=>x.group==="sector").map(tile).join("")}</div>`}
+function sources(){const s=D.status||{},c=D.counts||{};
+  return header("Sources",`${Object.values(s).filter(v=>v.ok).length} of ${Object.keys(s).length} feeds healthy on the last run, which took ${Math.round(D.took_s)} seconds. It priced ${c.books||0} sportsbooks, ${(c.props||0).toLocaleString()} player props and ${(c.alts||0).toLocaleString()} alternate lines. If a feed fails, it's skipped and everything else keeps working.`)+
+  `<div class="tablewrap"><table class="grid"><thead><tr><th>Feed</th><th class="c">Records</th><th>Updated</th><th>Note</th></tr></thead><tbody>${Object.entries(s).sort().map(([k,v])=>`<tr><td><span class="${v.ok?"good":"bad"}" aria-hidden="true">●</span> ${esc(k)}<span class="sr">${v.ok?" healthy":" failed"}</span></td><td class="c num">${v.count}</td><td class="note">${ago(v.at)}</td><td class="note">${esc(v.error)}</td></tr>`).join("")}</tbody></table></div>`}
+
+nav();load();
+</script>
+</body>
+</html>
