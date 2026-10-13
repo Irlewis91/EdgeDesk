@@ -13,6 +13,8 @@ does not re-buy the same data.
 """
 import json
 import os
+
+import paths
 import re
 import time
 import urllib.request
@@ -20,7 +22,7 @@ import urllib.request
 from sources import _mark
 
 API = "https://api.apify.com/v2/acts/%s/run-sync-get-dataset-items?maxTotalChargeUsd=%s&timeout=240&clean=1"
-CACHE = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "apify_cache.json")
+CACHE = os.path.join(paths.DATA, "apify_cache.json")
 DK_LEAGUES = {"NFL": "88808", "NCAAF": "87637"}
 LEAGUES = [x.strip().upper() for x in os.environ.get("EDGEDESK_APIFY_LEAGUES", "NFL").split(",") if x.strip()]
 

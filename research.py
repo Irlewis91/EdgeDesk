@@ -10,6 +10,8 @@ import glob
 import hashlib
 import json
 import os
+
+import paths
 import re
 import shutil
 import subprocess
@@ -18,7 +20,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from sources import _mark
 
-CACHE_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "research")
+CACHE_DIR = os.path.join(paths.DATA, "research")
 NAME = "last30days research"
 
 

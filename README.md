@@ -3,6 +3,25 @@
 A local dashboard that picks **10 bets a day**, scores any bet or parlay you enter, and pulls
 in world news, TLDR Tech, the stock market, and a congressional-trading "money trail".
 
+## Download
+Each release has ready-made apps under **Assets**; no Python needed.
+
+- **macOS (Apple silicon):** download `EdgeDesk-macOS.zip`, unzip, and move `EdgeDesk.app` to Applications.
+  The app is not signed with an Apple developer certificate, so the first time, right-click it and choose
+  **Open** (on recent macOS: System Settings → Privacy & Security → **Open Anyway**).
+- **Windows:** download `EdgeDesk-Windows.zip`, unzip, and run `EdgeDesk.exe` inside the `EdgeDesk` folder.
+  If Windows SmartScreen appears, choose **More info → Run anyway**.
+
+The app starts EdgeDesk on your computer, opens it in your browser, and shows a small window with
+**Open EdgeDesk** and **Quit**. The first load takes a few minutes while it gathers data. Data and the
+optional `.env` settings file live in `~/Library/Application Support/EdgeDesk` (macOS) or
+`%APPDATA%\EdgeDesk` (Windows). The apps are built by `.github/workflows/build.yml` when a release is published.
+
+**Phone:** there is no phone app to download, because the phone only displays EdgeDesk running on your
+computer. Open EdgeDesk's address in the phone's browser (see Hosting) and use **Add to Home Screen**; it
+then opens full-screen with its own icon.
+
+## Run from source
 ```
 python3 server.py            # http://127.0.0.1:8787, refreshes every 30 min
 python3 server.py --once     # one run, saves data/picks/YYYY-MM-DD.json, exits

@@ -9,10 +9,12 @@ import argparse
 import json
 import os
 
+import paths
+
 
 def _load_env():
     """Read KEY=value lines from .env next to this file (keys you paste yourself, never committed)."""
-    path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+    path = os.path.join(paths.HOME, ".env")
     try:
         with open(path) as fh:
             for line in fh:
@@ -47,8 +49,10 @@ import sources as S
 import stats as ST
 import weather as W
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
-DATA = os.path.join(ROOT, "data")
+ROOT, DATA = paths.ROOT, paths.DATA
+# files a phone or browser fetches on its own when the app is added to a home screen; nothing private in them
+PUBLIC = {"/manifest.webmanifest": "application/manifest+json", "/icon-192.png": "image/png", "/icon-512.png": "image/png",
+          "/apple-touch-icon.png": "image/png", "/favicon.png": "image/png"}
 PICKS = os.path.join(DATA, "picks")
 os.makedirs(PICKS, exist_ok=True)
 
@@ -242,9 +246,12 @@ class Handler(BaseHTTPRequestHandler):
         return False
 
     def do_GET(self):
+        p = self.path.split("?")[0]
+        if p in PUBLIC:
+            with open(os.path.join(ROOT, "static", p[1:]), "rb") as fh:
+                return self._send(200, fh.read(), PUBLIC[p])
         if not self._authed():
             return
-        p = self.path.split("?")[0]
         if p in ("/", "/index.html"):
             with open(os.path.join(ROOT, "static", "index.html"), "rb") as fh:
                 return self._send(200, fh.read(), "text/html; charset=utf-8")
@@ -318,7 +325,8 @@ def main():
     if a.once:
         run_pipeline()
         return 0 if STATE["dashboard"] else 1
-    threading.Thread(target=refresher, args=(a.refresh,), daemon=True).start()
+    if not os.environ.get("EDGEDESK_NO_REFRESH"):       # set only by automated build checks
+        threading.Thread(target=refresher, args=(a.refresh,), daemon=True).start()
     # With a password set, other devices on the network (your phone) can reach the app; without one it stays on this Mac only.
     host = os.environ.get("EDGEDESK_HOST") or ("0.0.0.0" if os.environ.get("EDGEDESK_PASSWORD") else "127.0.0.1")
     if host != "127.0.0.1" and not os.environ.get("EDGEDESK_PASSWORD"):

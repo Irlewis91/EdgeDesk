@@ -12,3 +12,7 @@ __pycache__/
 edgedesk/
 *.mp4
 !.env.example
+# packaging output
+build/
+dist/
+*.spec
